@@ -162,7 +162,7 @@ const ROUTES = {};
 const TAB_OF = {
   home: 'home', learn: 'home', review: 'home', mixed: 'home', browse: 'home',
   cats: 'home', welcome: 'home',
-  dict: 'dict',
+  dict: 'dict', dictcat: 'dict',
   menu: 'menu', alphabet: 'menu', stats: 'menu',
 };
 function go(route) {
@@ -1364,82 +1364,160 @@ ROUTES.cats = function () {
 };
 
 /* ---------------- словарь ---------------- */
-ROUTES.dict = function () {
-  const f = S.dictFilter || (S.dictFilter = { q: '', cat: '', lvl: '', status: '', limit: 80 });
-  const box = el(`<div>
-    <div class="page-head">
-      <div><h1>Словарь</h1><p class="sub">Все ${S.words.length} слов и выражений с озвучкой</p></div>
+/* ---------------- словарь: сначала категории ---------------- */
+function wordStatus(w) {
+  const st = wp(w.id).s;
+  return st === 'mastered' ? ['выучено', 'mastered']
+       : st === 'learning' ? ['в процессе', 'learning']
+       : st === 'known' ? ['уже знаю', 'known'] : ['новое', 'new'];
+}
+
+/* строка слова: статус, само слово, перевод и озвучка */
+function wordRowHTML(w) {
+  const [label, cls] = wordStatus(w);
+  return `<div class="wcard ${cls}" data-id="${w.id}">
+    <div class="wmain">
+      <div class="wstatus">${label}${hasMnemo(w) ? ' · 💡' : ''}<span class="wlvl">${w.lvl}</span></div>
+      <div class="wword ka">${esc(w.ka)}</div>
+      ${S.prog.set.translit ? `<div class="wtr">${esc(w.tr)}</div>` : ''}
+      <div class="wru">${esc(w.ru)}</div>
     </div>
+    <button class="wplay" data-a="speak" title="Произношение">▶</button>
+  </div>`;
+}
+
+function bindWordRows(root) {
+  $$('.wcard', root).forEach(row => {
+    const w = S.byId.get(row.dataset.id);
+    row.onclick = (e) => {
+      if (e.target.dataset.a === 'speak') { speak(w.ka); return; }
+      const open = row.nextElementSibling;
+      if (open && open.classList.contains('wdetails')) { open.remove(); return; }
+      $$('.wdetails', root).forEach(x => x.remove());
+      const det = el(`<div class="wdetails">
+        ${hasMnemo(w) ? `<div class="mnemo">💡 ${esc(S.mnemo[w.ka])}</div>` : ''}
+        <div class="wactions">
+          <button class="btn ghost sm" data-a="learn">📚 Учить</button>
+          <button class="btn ghost sm" data-a="known">✓ Уже знаю</button>
+          <button class="btn ghost sm" data-a="reset">↺ Сбросить</button>
+        </div></div>`);
+      det.onclick = (ev) => {
+        const a = ev.target.dataset.a;
+        if (!a) return;
+        if (a === 'learn') { setWp(w.id, { s: 'learning', r: 0, d: Date.now(), lr: null, e: 0 }); toast('Добавлено в изучение'); }
+        else if (a === 'known') { setWp(w.id, { s: 'known', r: 0, d: 0, lr: today(), e: 0 }); toast('Отмечено как известное'); }
+        else { delete S.prog.w[w.id]; saveProgress(); toast('Прогресс слова сброшен'); }
+        render();
+      };
+      row.after(det);
+    };
+  });
+}
+
+ROUTES.dict = function () {
+  const f = S.dictFilter || (S.dictFilter = { q: '', limit: 60 });
+  const box = el(`<div>
+    <div class="page-head"><div><h1>Словарь</h1>
+      <p class="sub">${S.words.length} слов и выражений с озвучкой</p></div></div>
     <div class="toolbar">
-      <input type="search" id="d-q" placeholder="Поиск: по-грузински, латиницей или по-русски…" value="${esc(f.q)}">
-      <select id="d-cat"><option value="">Все категории</option>
-        ${S.cats.map(c => `<option value="${c.id}" ${f.cat === c.id ? 'selected' : ''}>${c.icon} ${esc(c.name)} (${c.count})</option>`).join('')}</select>
-      <select id="d-lvl"><option value="">Все уровни</option>
-        ${LEVELS.map(l => `<option ${f.lvl === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
-      <select id="d-st"><option value="">Любой статус</option>
-        <option value="new" ${f.status === 'new' ? 'selected' : ''}>Новые</option>
-        <option value="learning" ${f.status === 'learning' ? 'selected' : ''}>В изучении</option>
-        <option value="mastered" ${f.status === 'mastered' ? 'selected' : ''}>Выученные</option>
-        <option value="known" ${f.status === 'known' ? 'selected' : ''}>Уже знаю</option></select>
+      <input type="search" id="d-q" placeholder="Искать слова…" value="${esc(f.q)}">
     </div>
     <div id="d-out"></div>
   </div>`);
   const out = $('#d-out', box);
-  const draw = () => {
-    const q = f.q.trim().toLowerCase();
-    const list = S.words.filter(w => {
-      if (f.cat && !w.cats.includes(f.cat)) return false;
-      if (f.lvl && w.lvl !== f.lvl) return false;
-      if (f.status && wp(w.id).s !== f.status) return false;
-      if (q && !(w.ka.includes(q) || w.tr.toLowerCase().includes(q) || w.ru.toLowerCase().includes(q))) return false;
-      return true;
-    });
-    const shown = list.slice(0, f.limit);
-    out.innerHTML = `<p class="sub" style="margin-bottom:10px">Найдено: ${list.length}</p>
-      <div class="wlist">${shown.map(w => {
-        const p = wp(w.id);
-        return `<div class="wrow" data-id="${w.id}">
-          <span class="st ${p.s}" title="${p.s}"></span>
-          <span class="w-ka ka">${esc(w.ka)}</span>
-          <span class="w-tr">${esc(w.tr)}</span>
-          <span class="w-ru">${esc(w.ru)}</span>
-          <span class="w-lvl">${w.lvl}</span>
-          <span class="acts">
-            <button data-a="speak" title="Произношение">🔊</button>
-            ${hasMnemo(w) ? '<button data-a="mnemo" class="has-mnemo" title="Ассоциация для запоминания">💡</button>' : ''}
-            <button data-a="learn" title="Учить это слово">📚</button>
-            <button data-a="known" title="Отметить «уже знаю»">✓</button>
-            <button data-a="reset" title="Сбросить прогресс">↺</button>
-          </span></div>`;
-      }).join('')}</div>
-      ${list.length > f.limit ? `<button class="btn ghost load-more">Показать ещё (${list.length - f.limit})</button>` : ''}`;
-    const more = $('.load-more', out);
-    if (more) more.onclick = () => { f.limit += 200; draw(); };
-    $$('.wrow', out).forEach(row => {
-      const w = S.byId.get(row.dataset.id);
-      row.onclick = (e) => {
-        const a = e.target.dataset.a;
-        if (!a) { speak(w.ka); return; }
-        if (a === 'speak') speak(w.ka);
-        else if (a === 'mnemo') {
-          const ex = row.nextElementSibling;
-          if (ex && ex.classList.contains('mnemo-row')) { ex.remove(); return; }
-          const note = el(`<div class="wrow mnemo-row"><span class="st"></span>
-            <span style="flex:1;font-size:13.5px;line-height:1.5">💡 ${esc(S.mnemo[w.ka])}</span></div>`);
-          row.after(note);
-        }
-        else if (a === 'learn') { setWp(w.id, { s: 'learning', r: 0, d: Date.now(), lr: null, e: 0 }); toast('Добавлено в изучение'); draw(); }
-        else if (a === 'known') { setWp(w.id, { s: 'known', r: 0, d: 0, lr: today(), e: 0 }); toast('Отмечено как известное'); draw(); }
-        else if (a === 'reset') { delete S.prog.w[w.id]; saveProgress(); draw(); }
-      };
-    });
+
+  const drawCategories = () => {
+    const rows = S.cats.map(c => {
+      let total = 0, m = 0;
+      for (const w of S.words) {
+        if (!w.cats.includes(c.id)) continue;
+        total++;
+        if (wp(w.id).s === 'mastered') m++;
+      }
+      return { c, total, m, pct: total ? Math.round(m / total * 100) : 0 };
+    }).filter(r => r.total);
+    out.innerHTML = `<div class="cat-list">${rows.map(r => `
+      <button class="cat-line" data-cat="${r.c.id}">
+        <span class="ic">${r.c.icon}</span>
+        <span class="nm"><b>${esc(r.c.name)}</b><i>${plural(r.total, 'слово', 'слова', 'слов')}</i></span>
+        <span class="pct ${r.pct ? '' : 'zero'}">${r.pct}%</span>
+        <span class="chev">›</span>
+      </button>`).join('')}</div>`;
+    $$('.cat-line', out).forEach(b => b.onclick = () => { S.dictCat = b.dataset.cat; go('dictcat'); });
   };
+
+  const drawSearch = () => {
+    const q = f.q.trim().toLowerCase();
+    /* Ранжируем: точное совпадение → начало слова → просто вхождение.
+       Иначе запрос «вода» первым выдаёт «в качестве вывода». */
+    const score = (w) => {
+      const ru = w.ru.toLowerCase(), tr = w.tr.toLowerCase();
+      const parts = ru.split(/[;,]/).map(x => x.trim());
+      if (w.ka === q || parts.includes(q) || tr === q) return 100;
+      if (parts.some(x => x.startsWith(q)) || w.ka.startsWith(q) || tr.startsWith(q)) return 60;
+      if (parts.some(x => x.split(' ').some(word => word.startsWith(q)))) return 40;
+      if (w.ka.includes(q) || tr.includes(q) || ru.includes(q)) return 10;
+      return 0;
+    };
+    const found = S.words.map(w => ({ w, s: score(w) })).filter(x => x.s > 0)
+      .sort((a, b) => b.s - a.s || b.w.f - a.w.f).map(x => x.w);
+    const shown = found.slice(0, f.limit);
+    out.innerHTML = `<p class="sub" style="margin-bottom:10px">Найдено: ${found.length}</p>
+      <div class="wlist">${shown.map(wordRowHTML).join('')}</div>
+      ${found.length > f.limit ? `<button class="btn ghost load-more">Показать ещё (${found.length - f.limit})</button>` : ''}`;
+    bindWordRows(out);
+    const more = $('.load-more', out);
+    if (more) more.onclick = () => { f.limit += 100; drawSearch(); };
+  };
+
+  const draw = () => (f.q.trim() ? drawSearch() : drawCategories());
   draw();
   let t = null;
-  $('#d-q', box).oninput = (e) => { f.q = e.target.value; f.limit = 80; clearTimeout(t); t = setTimeout(draw, 180); };
-  $('#d-cat', box).onchange = (e) => { f.cat = e.target.value; f.limit = 80; draw(); };
-  $('#d-lvl', box).onchange = (e) => { f.lvl = e.target.value; f.limit = 80; draw(); };
-  $('#d-st', box).onchange = (e) => { f.status = e.target.value; f.limit = 80; draw(); };
+  $('#d-q', box).oninput = (e) => { f.q = e.target.value; f.limit = 60; clearTimeout(t); t = setTimeout(draw, 180); };
+  return box;
+};
+
+/* ---------------- словарь: слова одной категории ---------------- */
+ROUTES.dictcat = function () {
+  const cat = S.cats.find(c => c.id === S.dictCat);
+  if (!cat) { go('dict'); return el('<div></div>'); }
+  const order = S.dictOrder || 'default';
+  let words = S.words.filter(w => w.cats.includes(cat.id));
+  const counts = { mastered: 0, learning: 0, known: 0, new: 0 };
+  for (const w of words) counts[wordStatus(w)[1]]++;
+  if (order === 'alpha') words = words.slice().sort((a, b) => a.ka.localeCompare(b.ka, 'ka'));
+  else if (order === 'ru') words = words.slice().sort((a, b) => a.ru.localeCompare(b.ru, 'ru'));
+  else if (order === 'level') words = words.slice().sort((a, b) =>
+    LEVELS.indexOf(a.lvl) - LEVELS.indexOf(b.lvl) || b.f - a.f);
+  const limit = S.dictCatLimit || 80;
+
+  const box = el(`<div>
+    ${subHead(`${cat.icon} ${cat.name}`, 'dict')}
+    <p class="sub" style="margin-bottom:14px">
+      ${plural(words.length, 'слово', 'слова', 'слов')} ·
+      выучено ${counts.mastered} · в процессе ${counts.learning} · знаю ${counts.known}</p>
+    <div class="toolbar">
+      <span class="lbl">Порядок:</span>
+      <button class="chip sm ${order === 'default' ? 'on' : ''}" data-order="default">по умолчанию</button>
+      <button class="chip sm ${order === 'alpha' ? 'on' : ''}" data-order="alpha">по алфавиту</button>
+      <button class="chip sm ${order === 'ru' ? 'on' : ''}" data-order="ru">по переводу</button>
+      <button class="chip sm ${order === 'level' ? 'on' : ''}" data-order="level">по уровню</button>
+      <span style="flex:1"></span>
+      <button class="chip sm" id="cat-reset">↺ Сбросить прогресс темы</button>
+    </div>
+    <div class="wlist">${words.slice(0, limit).map(wordRowHTML).join('')}</div>
+    ${words.length > limit ? `<button class="btn ghost load-more">Показать ещё (${words.length - limit})</button>` : ''}
+  </div>`);
+  bindSubHead(box);
+  bindWordRows(box);
+  $$('[data-order]', box).forEach(b => b.onclick = () => { S.dictOrder = b.dataset.order; render(); });
+  const more = $('.load-more', box);
+  if (more) more.onclick = () => { S.dictCatLimit = limit + 150; render(); };
+  $('#cat-reset', box).onclick = () => {
+    if (!confirm(`Сбросить прогресс всех слов темы «${cat.name}»?`)) return;
+    for (const w of words) delete S.prog.w[w.id];
+    saveProgress(); render(); toast('Прогресс темы сброшен');
+  };
   return box;
 };
 

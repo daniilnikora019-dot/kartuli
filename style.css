@@ -416,6 +416,44 @@ input[type=search]:focus,select:focus,input[type=number]:focus{border-color:var(
 input[type=search]{flex:1;min-width:210px}
 
 /* ---------- словарь ---------- */
+.cat-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.cat-line{
+  display:flex;align-items:center;gap:13px;padding:13px 15px;background:var(--surface);
+  text-align:left;transition:background .12s;min-height:60px;
+}
+.cat-line + .cat-line{border-top:1px solid var(--line)}
+.cat-line:hover{background:var(--surface-2)}
+.cat-line .ic{font-size:20px;width:34px;flex:0 0 34px;text-align:center}
+.cat-line .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cat-line .nm b{font-size:14.5px;font-weight:600}
+.cat-line .nm i{font-style:normal;font-size:12px;color:var(--muted)}
+.cat-line .pct{font-size:14px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
+.cat-line .pct.zero{color:var(--muted);font-weight:600}
+.cat-line .chev{color:var(--muted);font-size:16px}
+
+.wcard{
+  display:flex;align-items:center;gap:12px;padding:11px 14px 11px 0;background:var(--surface);
+  border-left:3px solid var(--line-strong);cursor:pointer;transition:background .12s;
+}
+.wcard + .wcard{border-top:1px solid var(--line)}
+.wcard:hover{background:var(--surface-2)}
+.wcard.mastered{border-left-color:var(--green)}
+.wcard.learning{border-left-color:var(--gold)}
+.wcard.known{border-left-color:var(--slate)}
+.wcard .wmain{flex:1;min-width:0;padding-left:14px}
+.wcard .wstatus{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.wcard .wlvl{background:var(--surface-2);border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700}
+.wcard .wword{font-size:17px;font-weight:600;margin-top:2px;line-height:1.3}
+.wcard .wtr{font-size:11.5px;color:var(--muted);letter-spacing:.3px}
+.wcard .wru{font-size:13.5px;color:var(--text-2);margin-top:2px}
+.wcard .wplay{
+  width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:var(--accent-soft);
+  color:var(--accent);font-size:13px;display:grid;place-items:center;
+}
+.wcard .wplay:hover{background:var(--accent);color:#fff}
+.wdetails{background:var(--surface-2);padding:12px 14px;border-top:1px solid var(--line)}
+.wdetails .mnemo{margin:0 0 10px}
+.wactions{display:flex;gap:8px;flex-wrap:wrap}
 .wlist{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line)}
 .wrow{display:flex;align-items:center;gap:14px;padding:10px 15px;background:var(--surface);transition:background .1s}
 .wrow+.wrow{border-top:1px solid var(--line)}
