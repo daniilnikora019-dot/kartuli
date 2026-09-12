@@ -228,11 +228,10 @@ ROUTES.welcome = function () {
 ROUTES.home = function () {
   const c = counts(), t = dayRec(today());
   const goalNew = S.prog.set.newPerDay;
-  /* Цель дня = две равные половины: новые слова из нормы и повторения по плану на сегодня. */
-  const goalRev = Math.min(S.prog.set.reviewPerDay, t.rev + c.due);
-  const partNew = goalNew ? Math.min(t.started, goalNew) / goalNew : 1;
-  const partRev = goalRev ? Math.min(t.rev, goalRev) / goalRev : 1;
-  const donePct = Math.min(100, Math.round((partNew * 0.5 + partRev * 0.5) * 100));
+  /* Счётчик цели считается только по новым словам: сколько взято в изучение из дневной нормы.
+     Повторения в процент не входят — их число диктует расписание, а не усердие, и «половина
+     выполнена» на пустом месте только сбивала с толку. Они показаны отдельной строкой. */
+  const donePct = goalNew ? Math.min(100, Math.round(t.started / goalNew * 100)) : 0;
   const hour = new Date().getHours();
   const hi = hour < 5 ? 'Доброй ночи' : hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер';
 
@@ -308,10 +307,10 @@ ROUTES.home = function () {
                 <b class="num">${donePct}%</b><span>цель дня</span></div>
             </div>
             <div class="goal-list">
-              <div class="goal-row"><span>Новые слова <i class="pt">${Math.round(partNew * 50)} из 50%</i></span>
-                <b>${t.started} / ${goalNew}</b></div>
-              <div class="goal-row"><span>Повторения <i class="pt">${Math.round(partRev * 50)} из 50%</i></span>
-                <b>${goalRev ? `${t.rev} / ${goalRev}` : 'всё'}</b></div>
+              <div class="goal-row"><span>Новых слов взято</span><b>${t.started} / ${goalNew}</b></div>
+              <div class="goal-row"><span>Выучено полностью сегодня</span><b>${t.new}</b></div>
+              <div class="goal-row"><span>Повторено сегодня</span>
+                <b>${t.rev}${c.due ? ` · ждёт ${c.due}` : ''}</b></div>
             </div>
           </div>
           <div class="week">${week.map(d => `
