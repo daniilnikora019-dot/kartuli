@@ -84,7 +84,6 @@ input,select{font-family:inherit;font-size:inherit;color:inherit}
   color:var(--accent);font-size:14px;font-weight:600;padding:8px 10px 8px 0;
   display:inline-flex;align-items:center;min-height:44px;
 }
-.back-link:hover{opacity:.75}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:24px;flex-wrap:wrap}
 h1{font-size:26px;margin:0 0 5px;letter-spacing:-.5px;font-weight:660}
 .sub{color:var(--muted);font-size:13.5px;margin:0;line-height:1.45}
@@ -96,7 +95,6 @@ h2{font-size:17px;margin:0 0 12px;letter-spacing:-.25px;font-weight:640}
 .card h2{font-size:15px;margin:18px 0 6px}
 .card h2:first-child{margin-top:0}
 .card a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}
-.card a:hover{border-bottom-color:var(--accent)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px;box-shadow:var(--shadow-sm)}
 .grid{display:grid;gap:14px}
 .grid > *{min-width:0}
@@ -125,14 +123,10 @@ h2{font-size:17px;margin:0 0 12px;letter-spacing:-.25px;font-weight:640}
   transition:background .14s,border-color .14s,transform .1s;border:1px solid transparent;
 }
 .btn:active{transform:translateY(1px)}
-.btn:hover{background:var(--surface-3)}
 .btn.primary{background:var(--accent);color:#fff}
-.btn.primary:hover{background:var(--accent-hover)}
 .btn.success{background:var(--green);color:#fff}
-.btn.success:hover{filter:brightness(1.06)}
 .btn.warn{background:var(--gold);color:#fff}
 .btn.ghost{background:transparent;border-color:var(--line-strong);color:var(--text-2)}
-.btn.ghost:hover{background:var(--surface-2);color:var(--text)}
 .btn.big{padding:14px 22px;font-size:15px;border-radius:var(--r-md)}
 .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .btn.block{width:100%}
@@ -154,9 +148,7 @@ h2{font-size:17px;margin:0 0 12px;letter-spacing:-.25px;font-weight:640}
 .hero-main p{margin:0 0 20px;opacity:.85;font-size:13.5px}
 .hero-actions{display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
 .hero-actions .btn{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.18)}
-.hero-actions .btn:hover{background:rgba(255,255,255,.22)}
 .hero-actions .btn.solid{background:#fff;color:var(--accent);border-color:#fff}
-.hero-actions .btn.solid:hover{background:#f2f0ec}
 .ring-wrap{display:flex;align-items:center;gap:22px}
 .ring{position:relative;width:106px;height:106px;flex:0 0 106px}
 .ring svg{transform:rotate(-90deg);display:block}
@@ -187,7 +179,6 @@ h2.sect + .menu-card{margin-bottom:18px}
   transition:background .13s;
 }
 .menu-row + .menu-row{border-top:1px solid var(--line)}
-.menu-row:hover{background:var(--surface-2)}
 .menu-row .mi{
   width:38px;height:38px;flex:0 0 38px;border-radius:11px;display:grid;place-items:center;
   font-size:17px;background:var(--surface-2);
@@ -250,14 +241,12 @@ h2.sect + .menu-card{margin-bottom:18px}
   display:inline-grid;place-items:center;font-size:17px;margin-top:18px;
   transition:background .14s,transform .14s;
 }
-.speak:hover{background:var(--accent);color:#fff;transform:scale(1.05)}
 .speak.lg{width:58px;height:58px;font-size:22px}
 .options{display:grid;gap:9px;margin-top:18px}
 .opt{
   padding:14px 18px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line);
   text-align:left;font-size:15px;font-weight:500;transition:border-color .13s,background .13s;
 }
-.opt:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
 .opt.right{border-color:var(--green);background:var(--green-soft);color:var(--green);font-weight:640}
 .opt.wrong{border-color:var(--clay);background:var(--clay-soft);color:var(--clay)}
 .opt:disabled{cursor:default}
@@ -273,7 +262,6 @@ h2.sect + .menu-card{margin-bottom:18px}
   padding:9px 14px;border-radius:var(--r-sm);background:var(--surface-2);font-size:19px;
   font-weight:600;border:1px solid var(--line);transition:.13s;
 }
-.letters button:hover{background:var(--accent-soft);border-color:var(--accent)}
 .slot{
   min-height:52px;border-bottom:2px dashed var(--line-strong);display:flex;align-items:center;
   justify-content:center;font-size:29px;font-weight:600;gap:2px;margin-top:10px;color:var(--text);
@@ -310,7 +298,6 @@ h2.sect + .menu-card{margin-bottom:18px}
   width:64px;height:46px;border-radius:var(--r-sm);background:var(--surface-2);
   font-size:18px;color:var(--text-2);transition:.14s;border:1px solid transparent;
 }
-.tools button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
 .tools button.used{background:var(--accent-soft);color:var(--accent)}
 .tools button:disabled{opacity:.35}
 .grade-row{display:flex;margin:20px -20px 0;border-top:1px solid var(--line)}
@@ -321,8 +308,6 @@ h2.sect + .menu-card{margin-bottom:18px}
 .grade-row button:first-child{border-right:1px solid var(--line)}
 .grade-row button b{font-size:14.5px;font-weight:620}
 .grade-row button span{font-size:12px;color:var(--muted)}
-.grade-row button:first-child:hover:not(:disabled){background:var(--clay-soft);color:var(--clay)}
-.grade-row button:last-child:hover:not(:disabled){background:var(--green-soft);color:var(--green)}
 .grade-row button:disabled{opacity:.4}
 
 /* свайпы */
@@ -344,7 +329,6 @@ h2.sect + .menu-card{margin-bottom:18px}
 /* выбор способа проверки */
 .choose-actions{display:grid;gap:9px}
 .choose-actions .btn{justify-content:flex-start;padding:14px 18px;font-size:14.5px}
-.choose-actions .btn:hover{background:var(--accent-soft);color:var(--accent)}
 
 /* ввод слова */
 .typing{margin-top:18px}
@@ -380,7 +364,6 @@ h2.sect + .menu-card{margin-bottom:18px}
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:15px;
   cursor:pointer;transition:border-color .14s,background .14s;text-align:left;
 }
-.cat-card:hover{border-color:var(--line-strong)}
 .cat-card.on{border-color:var(--accent);background:var(--accent-soft)}
 .cat-card .top{display:flex;align-items:flex-start;gap:10px;margin-bottom:11px}
 .cat-card .ic{font-size:19px;line-height:1.2}
@@ -411,7 +394,6 @@ h2.sect + .menu-card{margin-bottom:18px}
   padding:7px 13px;border-radius:20px;background:var(--surface);border:1px solid var(--line);
   font-size:12.5px;font-weight:600;color:var(--text-2);transition:.13s;
 }
-.chip:hover{border-color:var(--line-strong);color:var(--text)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 input[type=search],input[type=text],input[type=number],select{
   padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);
@@ -427,7 +409,6 @@ input[type=search]{flex:1;min-width:210px}
   text-align:left;transition:background .12s;min-height:60px;
 }
 .cat-line + .cat-line{border-top:1px solid var(--line)}
-.cat-line:hover{background:var(--surface-2)}
 .cat-line .ic{font-size:20px;width:34px;flex:0 0 34px;text-align:center}
 .cat-line .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .cat-line .nm b{font-size:14.5px;font-weight:600}
@@ -441,7 +422,6 @@ input[type=search]{flex:1;min-width:210px}
   border-left:3px solid var(--line-strong);cursor:pointer;transition:background .12s;
 }
 .wcard + .wcard{border-top:1px solid var(--line)}
-.wcard:hover{background:var(--surface-2)}
 .wcard.mastered{border-left-color:var(--green)}
 .wcard.learning{border-left-color:var(--gold)}
 .wcard.known{border-left-color:var(--slate)}
@@ -455,14 +435,12 @@ input[type=search]{flex:1;min-width:210px}
   width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:var(--accent-soft);
   color:var(--accent);font-size:13px;display:grid;place-items:center;
 }
-.wcard .wplay:hover{background:var(--accent);color:#fff}
 .wdetails{background:var(--surface-2);padding:12px 14px;border-top:1px solid var(--line)}
 .wdetails .mnemo{margin:0 0 10px}
 .wactions{display:flex;gap:8px;flex-wrap:wrap}
 .wlist{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line)}
 .wrow{display:flex;align-items:center;gap:14px;padding:10px 15px;background:var(--surface);transition:background .1s}
 .wrow+.wrow{border-top:1px solid var(--line)}
-.wrow:hover{background:var(--surface-2)}
 .wrow .st{width:7px;height:7px;border-radius:50%;flex:0 0 7px;background:var(--line-strong)}
 .st.learning{background:var(--gold)} .st.mastered{background:var(--green)} .st.known{background:var(--slate)}
 .wrow .w-ka{font-size:16px;font-weight:600;min-width:152px}
@@ -473,9 +451,7 @@ input[type=search]{flex:1;min-width:210px}
   padding:2px 7px;border-radius:20px;letter-spacing:.3px;
 }
 .wrow .acts{display:flex;gap:4px;opacity:0;transition:opacity .14s}
-.wrow:hover .acts{opacity:1}
 .wrow .acts button{width:28px;height:28px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;font-size:12px}
-.wrow .acts button:hover{background:var(--accent);color:#fff}
 .wrow .acts button.has-mnemo{background:var(--gold-soft);color:var(--gold)}
 .wrow.mnemo-row{background:var(--gold-soft)}
 .wrow.mnemo-row .st{background:var(--gold)}
@@ -487,7 +463,6 @@ input[type=search]{flex:1;min-width:210px}
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 14px;
   text-align:center;cursor:pointer;transition:border-color .14s,transform .14s,box-shadow .14s;
 }
-.letter-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .letter-card .big{font-size:38px;font-weight:500;line-height:1.1;color:var(--text)}
 .letter-card .nm{font-size:12.5px;color:var(--text-2);margin-top:5px;font-weight:600}
 .letter-card .tr{font-size:11.5px;color:var(--accent);font-weight:700;letter-spacing:.6px;margin-top:1px}
@@ -581,3 +556,40 @@ canvas{display:block;width:100%}
   .menu-row .mt b{font-size:14px}
   #main .grid[style*="1fr 1fr"]{grid-template-columns:1fr!important}
 }
+
+/* Наведение — только там, где есть мышь. На телефоне hover «залипает» после тапа:
+   кнопка на том же месте подсвечивалась бы на следующем вопросе, будто это готовый ответ. */
+@media (hover: hover) and (pointer: fine) {
+  .back-link:hover{opacity:.75}
+  .card a:hover{border-bottom-color:var(--accent)}
+  .btn:hover{background:var(--surface-3)}
+  .btn.primary:hover{background:var(--accent-hover)}
+  .btn.success:hover{filter:brightness(1.06)}
+  .btn.ghost:hover{background:var(--surface-2);color:var(--text)}
+  .hero-actions .btn:hover{background:rgba(255,255,255,.22)}
+  .hero-actions .btn.solid:hover{background:#f2f0ec}
+  .menu-row:hover{background:var(--surface-2)}
+  .speak:hover{background:var(--accent);color:#fff;transform:scale(1.05)}
+  .opt:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
+  .letters button:hover{background:var(--accent-soft);border-color:var(--accent)}
+  .tools button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
+  .grade-row button:first-child:hover:not(:disabled){background:var(--clay-soft);color:var(--clay)}
+  .grade-row button:last-child:hover:not(:disabled){background:var(--green-soft);color:var(--green)}
+  .choose-actions .btn:hover{background:var(--accent-soft);color:var(--accent)}
+  .cat-card:hover{border-color:var(--line-strong)}
+  .chip:hover{border-color:var(--line-strong);color:var(--text)}
+  .cat-line:hover{background:var(--surface-2)}
+  .wcard:hover{background:var(--surface-2)}
+  .wcard .wplay:hover{background:var(--accent);color:#fff}
+  .wrow:hover{background:var(--surface-2)}
+  .wrow:hover .acts{opacity:1}
+  .wrow .acts button:hover{background:var(--accent);color:#fff}
+  .letter-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+}
+
+/* на сенсорных экранах — короткая подсветка самого нажатия, без следов */
+@media (hover: none) {
+  .opt:active:not(:disabled),.btn:active,.menu-row:active,.cat-line:active,.wcard:active,
+  .letter-card:active,.chip:active,.tab:active{filter:brightness(.94)}
+}
+button,.cat-card,.letter-card,.wcard,.cat-line,.menu-row,.wrow{-webkit-tap-highlight-color:transparent}
