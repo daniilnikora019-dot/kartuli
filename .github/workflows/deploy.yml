@@ -29,7 +29,7 @@ jobs:
       - name: Собрать сайт
         run: |
           mkdir -p _site
-          cp index.html style.css app.js sw.js manifest.json .nojekyll _site/
+          cp index.html style.css app.js sw.js manifest.json .nojekyll robots.txt _site/
           cp -r icons data audio _site/
           rm -f _site/data/wod_history.json
           echo "файлов в сборке: $(find _site -type f | wc -l)"
