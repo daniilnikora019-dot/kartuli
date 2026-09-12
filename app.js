@@ -163,7 +163,7 @@ const TAB_OF = {
   home: 'home', learn: 'home', review: 'home', mixed: 'home', browse: 'home',
   cats: 'home', welcome: 'home',
   dict: 'dict', dictcat: 'dict',
-  menu: 'menu', alphabet: 'menu', stats: 'menu',
+  menu: 'menu', alphabet: 'menu', stats: 'menu', about: 'menu',
 };
 function go(route) {
   S.route = route; S.session = null;
@@ -222,6 +222,10 @@ ROUTES.menu = function () {
         <span class="mt"><b>Автоозвучка</b>
           <i>${S.prog.set.autoplay ? 'слово произносится при показе' : 'выключена, кнопка 🔊 работает'}</i></span>
         <span class="ma">${S.prog.set.autoplay ? 'вкл' : 'выкл'}</span></button>
+      <button class="menu-row" data-go="about">
+        <span class="mi">ℹ️</span>
+        <span class="mt"><b>Источники и лицензии</b><i>Откуда словарь, частотность и озвучка</i></span>
+        <span class="ma">›</span></button>
       <button class="menu-row" id="m-theme">
         <span class="mi">${document.documentElement.dataset.theme === 'dark' ? '🌙' : '☀️'}</span>
         <span class="mt"><b>Тема</b><i>${themePref() === 'system' ? 'как в системе' : themePref() === 'dark' ? 'тёмная' : 'светлая'}</i></span>
@@ -245,6 +249,43 @@ ROUTES.menu = function () {
     localStorage.setItem('kartuli_theme', next);
     applyTheme(); render();
   };
+  return box;
+};
+
+/* ---------------- источники ---------------- */
+ROUTES.about = function () {
+  const core = S.words.filter(w => w.src === 'core').length;
+  const box = el(`<div>
+    ${subHead('Источники и лицензии', 'menu')}
+    <div class="card" style="line-height:1.6;font-size:14px">
+      <h2>Словарь</h2>
+      <p class="sub" style="margin-bottom:14px">${S.words.length} лексем. Из них ${core} написаны вручную
+      для этого приложения, остальные извлечены из русского Викисловаря и переработаны:
+      отобраны по употребимости, очищены от узкой терминологии и имён собственных,
+      разложены по темам и уровням.</p>
+      <p class="sub" style="margin-bottom:14px">Материалы Викисловаря распространяются по лицензии
+      <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru" target="_blank" rel="noopener">CC BY-SA 4.0</a>
+      — с указанием авторства и сохранением условий. Источник:
+      <a href="https://ru.wiktionary.org" target="_blank" rel="noopener">ru.wiktionary.org</a>.
+      Извлечение выполнено через <a href="https://kaikki.org" target="_blank" rel="noopener">kaikki.org</a>.
+      Этот словарь — производная работа и распространяется на тех же условиях.</p>
+
+      <h2>Частотность и уровни</h2>
+      <p class="sub" style="margin-bottom:14px">Уровни A1–C1 расставлены по тому, насколько часто слово
+      встречается в живом языке. Использованы корпуса
+      <a href="https://wortschatz.uni-leipzig.de" target="_blank" rel="noopener">Leipzig Corpora Collection</a>
+      (грузинский веб-корпус и Википедия).</p>
+
+      <h2>Озвучка</h2>
+      <p class="sub" style="margin-bottom:14px">Синтез речи Microsoft Neural, голоса ka-GE (Эка и Гиорги).
+      Файлы сгенерированы заранее и хранятся вместе с приложением.</p>
+
+      <h2>Проверка</h2>
+      <p class="sub">Написание сверено с корпусами и английским Викисловарём, переводы — выборочно
+      с независимым источником, произношение — распознаванием речи на случайной выборке.</p>
+    </div>
+  </div>`);
+  bindSubHead(box);
   return box;
 };
 
