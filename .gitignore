@@ -1,0 +1,9 @@
+# секреты и локальное состояние — в репозиторий не попадают
+telegram_config.json
+data/wod_history.json
+
+# служебное
+.DS_Store
+__pycache__/
+*.pyc
+*.log
