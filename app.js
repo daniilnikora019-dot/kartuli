@@ -744,11 +744,11 @@ function newWordCard(w, o) {
       <div class="word-ru">${esc(w.ru)}</div>
       ${mnemoHTML()}
       <div class="grade-row">
-        <button data-a="learn"><b>Учить это слово</b><span>вернётся на повторение</span></button>
         <button data-a="known"><b>Уже знаю</b><span>больше не показывать</span></button>
+        <button data-a="learn"><b>Учить это слово</b><span>вернётся на повторение</span></button>
       </div>
     </div>
-    <p class="hint">Смахните карточку: <b>вправо — учить</b>, влево — уже знаю ·
+    <p class="hint">Смахните карточку: влево — уже знаю, <b>вправо — учить</b> ·
       <kbd>1</kbd> / <kbd>2</kbd> с клавиатуры · <kbd>пробел</kbd> — послушать</p>
   </div>`);
   bindSpeak(box, w.ka);
@@ -1168,11 +1168,11 @@ function exerciseReview(w, o) {
       </div>
       ${repDots(o.reps || 0)}
       <div class="grade-row" id="grade">
-        <button data-g="yes"><b>Я вспомнил</b><span>это слово</span></button>
         <button data-g="no"><b>Я не вспомнил</b><span>это слово</span></button>
+        <button data-g="yes"><b>Я вспомнил</b><span>это слово</span></button>
       </div>
     </div>
-    <p class="hint" id="hint">Смахните карточку: <b>вправо — вспомнил</b>, влево — нет ·
+    <p class="hint" id="hint">Смахните карточку: влево — не вспомнил, <b>вправо — вспомнил</b> ·
       <kbd>1</kbd> написать · <kbd>2</kbd> посмотреть · <kbd>3</kbd> выбрать</p>
   </div>`);
   bindSpeak(box, w.ka);
