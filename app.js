@@ -553,11 +553,22 @@ function bindSwipe(card, o) {
   window.addEventListener('mouseup', end);
 }
 
+/* Ждём, пока договорит озвучка, и только потом листаем дальше — иначе слово
+   обрывается на полуслове. Если звука нет, работает обычная короткая пауза. */
+function afterAudio(cb, fallback) {
+  const a = S.audioEl;
+  if (!a || a.paused || a.ended) { setTimeout(cb, fallback || 650); return; }
+  let fired = false;
+  const fire = () => { if (fired) return; fired = true; setTimeout(cb, 260); };
+  a.addEventListener('ended', fire, { once: true });
+  setTimeout(fire, 4000);                    // страховка, если звук не доиграет
+}
+
 /* После ответа: при ошибке ждём, пока разберёшься, и даём выбрать — дальше
    или показать слово ещё раз в этой же сессии. */
 function afterAnswer(box, card, ok, w, done) {
   const auto = S.prog.set.autoNext !== false;
-  if (ok && auto) { setTimeout(() => done(false), 700); return; }
+  if (ok && auto) { afterAudio(() => done(false)); return; }
   const panel = el(`<div class="after-answer ${ok ? 'ok' : 'no'}">
     <button class="btn ghost" data-a="again">↺ Показать ещё раз</button>
     <button class="btn primary" data-a="next">Дальше →</button>
