@@ -37,19 +37,61 @@ def api(cfg, method, data=None, files=None):
         return json.loads(r.read())
 
 
-def resolve_chat_id(cfg):
-    """если chat_id не задан — берём из последних сообщений боту (нужно написать боту /start)"""
-    if cfg.get('chat_id'):
-        return str(cfg['chat_id'])
-    res = api(cfg, 'getUpdates')
-    chats = [u['message']['chat'] for u in res.get('result', []) if 'message' in u]
-    if not chats:
-        sys.exit('напишите боту /start в Telegram, затем запустите скрипт ещё раз')
-    cid = str(chats[-1]['id'])
-    cfg['chat_id'] = cid
+def save_cfg(cfg):
     json.dump(cfg, open(CFG, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
-    print(f'chat_id определён и сохранён: {cid}')
-    return cid
+
+
+def known_chats(cfg):
+    """список получателей; поддерживает и старое поле chat_id"""
+    ids = [str(x) for x in (cfg.get('chat_ids') or [])]
+    if cfg.get('chat_id') and str(cfg['chat_id']) not in ids:
+        ids.insert(0, str(cfg['chat_id']))
+    return ids
+
+
+def pending_chats(cfg):
+    """кто написал боту, но ещё не в рассылке"""
+    res = api(cfg, 'getUpdates')
+    found = {}
+    for u in res.get('result', []):
+        msg = u.get('message') or u.get('my_chat_member') or {}
+        chat = msg.get('chat')
+        if chat and chat.get('type') == 'private':
+            name = ' '.join(filter(None, [chat.get('first_name'), chat.get('last_name')])) or chat.get('username') or '—'
+            found[str(chat['id'])] = name
+    return found
+
+
+def resolve_chats(cfg):
+    ids = known_chats(cfg)
+    if ids:
+        return ids
+    found = pending_chats(cfg)
+    if not found:
+        sys.exit('напишите боту /start в Telegram, затем запустите скрипт ещё раз')
+    cfg['chat_ids'] = list(found)
+    cfg.pop('chat_id', None)
+    save_cfg(cfg)
+    print('получатели сохранены: ' + ', '.join(f'{n} ({i})' for i, n in found.items()))
+    return cfg['chat_ids']
+
+
+def add_recipients(cfg):
+    """добавить в рассылку всех, кто недавно написал боту"""
+    ids = known_chats(cfg)
+    found = pending_chats(cfg)
+    new = {i: n for i, n in found.items() if i not in ids}
+    if not new:
+        print('новых получателей нет.')
+        print('Попросите человека открыть бота и отправить /start, затем запустите команду снова.')
+        if found:
+            print('сейчас в рассылке: ' + ', '.join(f'{found.get(i, "—")} ({i})' for i in ids))
+        return
+    cfg['chat_ids'] = ids + list(new)
+    cfg.pop('chat_id', None)
+    save_cfg(cfg)
+    print('добавлены: ' + ', '.join(f'{n} ({i})' for i, n in new.items()))
+    print(f'всего получателей: {len(cfg["chat_ids"])}')
 
 
 def pick_word(cfg):
@@ -75,7 +117,15 @@ def pick_word(cfg):
 
 def main():
     cfg = load_cfg()
-    chat_id = resolve_chat_id(cfg)
+    if '--add' in sys.argv:
+        add_recipients(cfg)
+        return
+    if '--list' in sys.argv:
+        found = pending_chats(cfg)
+        for i in resolve_chats(cfg):
+            print(f'  {found.get(i, "—")} ({i})')
+        return
+    chats = resolve_chats(cfg)
     w, cats = pick_word(cfg)
     cat_names = {c['id']: (c['icon'], c['name']) for c in cats}
     icon, cname = cat_names.get(w['cats'][0], ('📖', 'Общая лексика'))
@@ -84,17 +134,25 @@ def main():
             f"<i>{w['tr']}</i>\n\n"
             f"🇷🇺 {w['ru']}\n\n"
             f"{icon} {cname} · уровень {w['lvl']}")
-    api(cfg, 'sendMessage', {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'})
-    # озвучка
     idx = json.load(open(f'{BASE}/data/audio_index.json', encoding='utf-8'))
     h = idx.get(w['ka'])
     voice = cfg.get('voice', 'f')
     path = f'{BASE}/audio/{voice}/{h}.mp3' if h else None
-    if path and os.path.exists(path):
-        api(cfg, 'sendVoice' if cfg.get('as_voice') else 'sendAudio',
-            {'chat_id': chat_id, 'title': w['ka'], 'performer': 'ქართული'},
-            {'voice' if cfg.get('as_voice') else 'audio': (f"{w['tr']}.mp3", open(path, 'rb').read())})
-    print(f"отправлено: {w['ka']} — {w['ru']}")
+    audio = open(path, 'rb').read() if path and os.path.exists(path) else None
+    sent, failed = [], []
+    for chat_id in chats:
+        try:
+            api(cfg, 'sendMessage', {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'})
+            if audio:
+                api(cfg, 'sendVoice' if cfg.get('as_voice') else 'sendAudio',
+                    {'chat_id': chat_id, 'title': w['ka'], 'performer': 'ქართული'},
+                    {'voice' if cfg.get('as_voice') else 'audio': (f"{w['tr']}.mp3", audio)})
+            sent.append(chat_id)
+        except Exception as e:
+            failed.append(f'{chat_id}: {e}')
+    print(f"отправлено ({len(sent)} получателям): {w['ka']} — {w['ru']}")
+    for f in failed:
+        print('не доставлено —', f)
 
 
 if __name__ == '__main__':
