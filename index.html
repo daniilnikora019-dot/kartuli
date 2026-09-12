@@ -18,25 +18,13 @@
 </head>
 <body>
 <div id="app">
-  <nav id="nav">
-    <div class="brand">
-      <div class="logo ka">ქ</div>
-      <div><b>ქართული</b><span>тренажёр грузинского</span></div>
-    </div>
-    <button class="navbtn" data-go="home"><span class="ic">🏠</span><span class="t">Главная</span></button>
-    <button class="navbtn" data-go="learn"><span class="ic">✨</span><span class="t">Новые слова</span><span class="badge" id="b-new"></span></button>
-    <button class="navbtn" data-go="review"><span class="ic">🔄</span><span class="t">Повторение</span><span class="badge warn" id="b-due"></span></button>
-    <button class="navbtn" data-go="cats"><span class="ic">🗂</span><span class="t">Категории</span></button>
-    <button class="navbtn" data-go="dict"><span class="ic">📖</span><span class="t">Словарь</span></button>
-    <button class="navbtn" data-go="alphabet"><span class="ic">🔤</span><span class="t">Алфавит</span></button>
-    <button class="navbtn" data-go="stats"><span class="ic">📊</span><span class="t">Статистика</span></button>
-    <div class="nav-foot">
-      <button id="sound-btn" title="Автоозвучка">🔊</button>
-      <button id="theme-btn" title="Тема">🌙</button>
-      <button id="settings-btn" title="Настройки">⚙️</button>
-    </div>
-  </nav>
   <main id="main"><div class="empty"><div class="ico">⏳</div><h3>Загружаю словарь…</h3></div></main>
+
+  <nav id="tabbar">
+    <button class="tab" data-go="home"><i>🎓</i><span>Учить</span><em class="dot-badge" id="b-due" hidden></em></button>
+    <button class="tab" data-go="dict"><i>📖</i><span>Словарь</span></button>
+    <button class="tab" data-go="menu"><i>⚙️</i><span>Меню</span></button>
+  </nav>
 </div>
 <script src="app.js"></script>
 <script>
