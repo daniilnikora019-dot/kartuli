@@ -47,7 +47,7 @@ echo
 printf "Включить ежедневную рассылку? (y/n): "
 read -r YN
 if [ "$YN" = "y" ]; then
-  cp tools/com.kartuli.wordofday.plist ~/Library/LaunchAgents/
+  sed "s|REPLACE_HOME|$HOME|" tools/com.kartuli.wordofday.plist > ~/Library/LaunchAgents/com.kartuli.wordofday.plist
   launchctl unload ~/Library/LaunchAgents/com.kartuli.wordofday.plist 2>/dev/null
   launchctl load ~/Library/LaunchAgents/com.kartuli.wordofday.plist
   echo "Готово: слово дня будет приходить каждый день."
