@@ -22,6 +22,14 @@ jobs:
           rm -f _site/data/wod_history.json
           echo "файлов в сборке: $(find _site -type f | wc -l)"
 
+      - name: Создать проект, если его ещё нет
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create kartuli --production-branch=main
+
       - name: Выложить на Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
