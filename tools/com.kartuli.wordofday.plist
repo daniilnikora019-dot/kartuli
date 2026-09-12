@@ -6,7 +6,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
-    <string>/Users/daniilnikora/Library/Application Support/kartuli/tools/telegram_word_of_day.py</string>
+    <string>REPLACE_HOME/Library/Application Support/kartuli/tools/telegram_word_of_day.py</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>

@@ -2,6 +2,9 @@
 telegram_config.json
 data/wod_history.json
 
+# памятка по проекту — только локально, публиковать её незачем
+README.md
+
 # служебное
 .DS_Store
 __pycache__/
