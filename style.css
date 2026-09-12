@@ -92,6 +92,10 @@ h2{font-size:17px;margin:0 0 12px;letter-spacing:-.25px;font-weight:640}
 .page-meta b{color:var(--text-2);font-weight:600}
 
 /* ---------- карточки ---------- */
+.card h2{font-size:15px;margin:18px 0 6px}
+.card h2:first-child{margin-top:0}
+.card a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}
+.card a:hover{border-bottom-color:var(--accent)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px;box-shadow:var(--shadow-sm)}
 .grid{display:grid;gap:14px}
 .grid > *{min-width:0}
