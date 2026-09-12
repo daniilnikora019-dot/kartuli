@@ -158,9 +158,18 @@ function toast(msg) {
 
 /* ---------------- роутер ---------------- */
 const ROUTES = {};
+/* нижняя панель: три раздела, остальные экраны — вложенные в них */
+const TAB_OF = {
+  home: 'home', learn: 'home', review: 'home', mixed: 'home', browse: 'home',
+  cats: 'home', welcome: 'home',
+  dict: 'dict',
+  menu: 'menu', alphabet: 'menu', stats: 'menu',
+};
 function go(route) {
   S.route = route; S.session = null;
-  $$('.navbtn').forEach(b => b.classList.toggle('on', b.dataset.go === route));
+  const tab = TAB_OF[route] || 'home';
+  $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
+  window.scrollTo(0, 0);
   render();
 }
 function render() {
@@ -169,11 +178,75 @@ function render() {
   main.appendChild(ROUTES[S.route]());
   main.firstElementChild.classList.add('fade');
   const c = counts();
-  $('#b-new').textContent = c.fresh || '';
-  $('#b-due').textContent = c.due || '';
-  $('#b-new').style.display = c.fresh ? '' : 'none';
-  $('#b-due').style.display = c.due ? '' : 'none';
+  const badge = $('#b-due');
+  if (badge) badge.hidden = !(c.due || c.fresh);
 }
+
+/* шапка вложенного раздела: возврат туда, откуда пришли */
+function subHead(title, back) {
+  return `<div class="sub-head">
+    <button class="back-link" data-back="${back || 'home'}">‹ Назад</button>
+    <h1>${esc(title)}</h1></div>`;
+}
+function bindSubHead(box) {
+  const b = box.querySelector('[data-back]');
+  if (b) b.onclick = () => go(b.dataset.back);
+}
+
+/* ---------------- меню ---------------- */
+ROUTES.menu = function () {
+  const c = counts();
+  const box = el(`<div>
+    <div class="page-head"><div><h1>Меню</h1>
+      <p class="sub">Настройки, алфавит и подробная статистика</p></div></div>
+
+    <div class="menu-card">
+      <button class="menu-row" data-act="settings">
+        <span class="mi">⚙️</span>
+        <span class="mt"><b>Настройки</b><i>Норма, режимы, голос и скорость речи, тема</i></span>
+        <span class="ma">›</span></button>
+      <button class="menu-row" data-go="stats">
+        <span class="mi accent">📊</span>
+        <span class="mt"><b>Подробная статистика</b>
+          <i>Выучено ${c.mastered} · в процессе ${c.learning} · известно ${c.known}</i></span>
+        <span class="ma">›</span></button>
+      <button class="menu-row" data-go="alphabet">
+        <span class="mi gold">🔤</span>
+        <span class="mt"><b>Алфавит</b><i>33 буквы с озвучкой и тренажёром</i></span>
+        <span class="ma">›</span></button>
+    </div>
+
+    <div class="menu-card" style="margin-top:16px">
+      <button class="menu-row" id="m-sound">
+        <span class="mi">${S.prog.set.autoplay ? '🔊' : '🔇'}</span>
+        <span class="mt"><b>Автоозвучка</b>
+          <i>${S.prog.set.autoplay ? 'слово произносится при показе' : 'выключена, кнопка 🔊 работает'}</i></span>
+        <span class="ma">${S.prog.set.autoplay ? 'вкл' : 'выкл'}</span></button>
+      <button class="menu-row" id="m-theme">
+        <span class="mi">${document.documentElement.dataset.theme === 'dark' ? '🌙' : '☀️'}</span>
+        <span class="mt"><b>Тема</b><i>${themePref() === 'system' ? 'как в системе' : themePref() === 'dark' ? 'тёмная' : 'светлая'}</i></span>
+        <span class="ma">›</span></button>
+    </div>
+
+    <p class="sub" style="margin-top:20px;text-align:center">
+      Словарь: ${S.words.length} лексем, ${S.trainable.length} в тренировках · озвучка Microsoft ka-GE
+    </p>
+  </div>`);
+  $$('[data-go]', box).forEach(b => b.onclick = () => go(b.dataset.go));
+  box.querySelector('[data-act=settings]').onclick = openSettings;
+  box.querySelector('#m-sound').onclick = () => {
+    S.prog.set.autoplay = !S.prog.set.autoplay;
+    saveProgress(); render();
+    toast(S.prog.set.autoplay ? 'Автоозвучка включена' : 'Автоозвучка выключена');
+  };
+  box.querySelector('#m-theme').onclick = () => {
+    const order = ['system', 'dark', 'light'];
+    const next = order[(order.indexOf(themePref()) + 1) % order.length];
+    localStorage.setItem('kartuli_theme', next);
+    applyTheme(); render();
+  };
+  return box;
+};
 
 /* ---------------- первый запуск: дневная норма ---------------- */
 ROUTES.welcome = function () {
@@ -285,10 +358,6 @@ ROUTES.home = function () {
           <button class="menu-row" data-act="browse">
             <span class="mi">🔁</span>
             <span class="mt"><b>Пролистать слова</b><i>Просмотр карточек без оценок</i></span>
-            <span class="ma">›</span></button>
-          <button class="menu-row" data-go="alphabet">
-            <span class="mi">🔤</span>
-            <span class="mt"><b>Алфавит</b><i>33 буквы с озвучкой и тренажёром</i></span>
             <span class="ma">›</span></button>
         </div>
       </div>
@@ -1232,8 +1301,9 @@ ROUTES.cats = function () {
     }
   }
   const box = el(`<div>
+    ${subHead('Категории', 'home')}
     <div class="page-head">
-      <div><h1>Категории</h1><p class="sub">Отметьте темы, которые изучаете сейчас — новые слова будут браться только из них</p></div>
+      <div><p class="sub">Отметьте темы, которые изучаете сейчас — новые слова будут браться только из них</p></div>
       <div class="page-meta">Выбрано тем: <b id="cat-n">${st.cats.length}</b> · слов в работе: <b id="pool-n">${poolWords().length}</b></div>
     </div>
     <div class="toolbar">
@@ -1270,6 +1340,7 @@ ROUTES.cats = function () {
       <span class="dot" style="background:var(--slate)"></span>отмечено «уже знаю»
     </p>
   </div>`);
+  bindSubHead(box);
   const refresh = () => { S.session = null; render(); };
   $$('.cat-card', box).forEach(c => c.onclick = () => {
     const id = c.dataset.cat, i = st.cats.indexOf(id);
@@ -1376,8 +1447,9 @@ ROUTES.dict = function () {
 ROUTES.alphabet = function () {
   if (S.alphaQuiz) return alphabetQuiz();
   const box = el(`<div>
+    ${subHead('Грузинский алфавит', 'menu')}
     <div class="page-head">
-      <div><h1>Грузинский алфавит</h1><p class="sub">33 буквы мхедрули. Нажмите на карточку, чтобы услышать название буквы</p></div>
+      <div><p class="sub">33 буквы мхедрули. Нажмите на карточку, чтобы услышать название буквы</p></div>
       <button class="btn primary" id="a-quiz">🎯 Тренировка букв</button>
     </div>
     <div class="card" style="margin-bottom:16px;font-size:13.5px;line-height:1.6;color:var(--muted)">
@@ -1394,6 +1466,7 @@ ROUTES.alphabet = function () {
         <div class="ex"><b class="ka">${esc(a[5])}</b> — ${esc(a[6])}</div>
       </div>`).join('')}</div>
   </div>`);
+  bindSubHead(box);
   $$('.letter-card', box).forEach(c => {
     const a = S.alphabet[+c.dataset.i];
     c.onclick = (e) => speak(e.target.closest('.ex') ? a[5] : a[1]);
@@ -1681,9 +1754,9 @@ ROUTES.stats = function () {
       <span class="mdot" style="background:${color}"></span><span class="mname">${name}</span></div>`;
 
   const box = el(`<div>
+    ${subHead('Статистика', 'menu')}
     <div class="page-head">
-      <div><h1>Статистика</h1>
-        <p class="sub">Весь словарь: ${S.words.length} лексем, из них ${S.trainable.length} в тренировках</p></div>
+      <div><p class="sub">Весь словарь: ${S.words.length} лексем, из них ${S.trainable.length} в тренировках</p></div>
       <div class="toolbar" style="margin:0">
         ${Object.entries(SCALES).map(([k, v]) =>
           `<button class="chip scale ${key === k ? 'on' : ''}" data-scale="${k}">${v[0]}</button>`).join('')}
@@ -1739,6 +1812,7 @@ ROUTES.stats = function () {
             <span class="val">${r.total ? Math.round(r.m / r.total * 100) : 0}% · ${r.m}/${r.total}</span></div>`).join('')}</div></div>
     </div>
   </div>`);
+  bindSubHead(box);
   $$('.chip.scale', box).forEach(b => b.onclick = () => { S.statsScale = b.dataset.scale; render(); });
   setTimeout(() => { drawActivity($('#c-rev'), buckets); drawCumulative($('#c-cum'), buckets); }, 0);
   return box;
@@ -1813,11 +1887,7 @@ function openSettings() {
     st[k] = k === 'refresh' ? !(st[k] !== false) : !st[k];
     node.firstElementChild.classList.toggle('on', k === 'refresh' ? st[k] !== false : !!st[k]);
     saveProgress();
-    if (k === 'autoplay') {
-      const sb = $('#sound-btn');
-      sb.textContent = st.autoplay ? '🔊' : '🔇';
-      sb.style.color = st.autoplay ? 'var(--accent)' : 'var(--muted)';
-    }
+
   });
   $('#s-theme', bg).onchange = (e) => { localStorage.setItem('kartuli_theme', e.target.value); applyTheme(); };
   $('#s-voice', bg).onchange = (e) => { st.voice = e.target.value; saveProgress(); speak('გამარჯობა'); };
@@ -1933,26 +2003,7 @@ async function boot() {
       <p>Откройте приложение через локальный сервер — ярлыком «Грузинский тренажёр» на Рабочем столе.</p></div>`;
     return;
   }
-  $$('.navbtn').forEach(b => b.onclick = () => go(b.dataset.go));
-  $('#settings-btn').onclick = openSettings;
-  const soundBtn = $('#sound-btn');
-  const syncSound = () => {
-    soundBtn.textContent = S.prog.set.autoplay ? '🔊' : '🔇';
-    soundBtn.title = S.prog.set.autoplay ? 'Автоозвучка включена' : 'Автоозвучка выключена';
-    soundBtn.style.color = S.prog.set.autoplay ? 'var(--accent)' : 'var(--muted)';
-  };
-  soundBtn.onclick = () => {
-    S.prog.set.autoplay = !S.prog.set.autoplay;
-    saveProgress(); syncSound();
-    toast(S.prog.set.autoplay ? 'Автоозвучка включена' : 'Автоозвучка выключена — кнопка 🔊 и пробел работают');
-  };
-  syncSound();
-  $('#theme-btn').onclick = () => {
-    localStorage.setItem('kartuli_theme',
-      document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
-    applyTheme();
-    render();
-  };
+  $$('.tab').forEach(b => b.onclick = () => go(b.dataset.go));
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input,select,textarea')) return;
     if (S.alphaQuiz && S.alphaKeys) S.alphaKeys(e);
