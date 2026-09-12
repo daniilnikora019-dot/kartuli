@@ -1,0 +1,13 @@
+{
+  "bot_token": "",
+  "chat_id": "",
+  "levels": [
+    "A1",
+    "A2",
+    "B1"
+  ],
+  "categories": [],
+  "voice": "f",
+  "as_voice": false,
+  "_комментарий": "Скопируйте в telegram_config.json и впишите токен от @BotFather. Файл с токеном в git не попадает."
+}
