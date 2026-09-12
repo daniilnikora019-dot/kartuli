@@ -1,5 +1,5 @@
 /* Офлайн-кэш: оболочка и словарь — заранее, озвучка — по мере прослушивания. */
-const SHELL = 'kartuli-shell-v1';
+const SHELL = 'kartuli-shell-v2';
 const AUDIO = 'kartuli-audio-v1';
 const AUDIO_LIMIT = 1200;                    // сколько озвучек держать офлайн
 const SHELL_FILES = [
@@ -41,9 +41,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // всё остальное: свежее из сети, при отсутствии связи — из кэша
+  // всё остальное: свежее из сети в обход промежуточных кэшей, при отсутствии связи — из кэша
   e.respondWith(
-    fetch(e.request)
+    fetch(new Request(e.request.url, { cache: 'no-store', credentials: 'same-origin' }))
       .then((res) => {
         if (res.ok) { const copy = res.clone(); caches.open(SHELL).then(c => c.put(e.request, copy)); }
         return res;
