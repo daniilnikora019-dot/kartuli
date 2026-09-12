@@ -252,6 +252,12 @@ h2.sect + .menu-card{margin-bottom:18px}
 .opt:disabled{cursor:default}
 .answer-actions{display:flex;gap:10px;margin-top:18px}
 .answer-actions .btn{flex:1}
+.after-answer{
+  display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);
+  animation:fade .2s ease;
+}
+.after-answer .btn{flex:1}
+.after-answer.no .btn.primary{background:var(--clay)}
 .hint{text-align:center;color:var(--muted);font-size:12px;margin-top:16px;letter-spacing:.1px}
 .hint kbd{
   background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;
