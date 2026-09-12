@@ -28,6 +28,7 @@ function defaultProgress() {
       levels: ['A1', 'A2', 'B1'],
       voice: 'f', autoplay: true, translit: true, refresh: true,
       speed: 1, invertSwipe: false, reviewScope: 'selected', masterReps: 5,
+      autoNext: true,              // верный ответ уходит сам; при ошибке всегда ждём
       newPerDay: 12, reviewPerDay: 60,
       reviewMode: 'choose',        // choose — выбираешь способ сам; recall / choice / mix — фиксированные
     },
@@ -502,6 +503,7 @@ function stepBack() {
   s.i = h.i;
   if (h.phase) s.phase = h.phase;
   if (h.drillRemoved) s.toTrain.splice(h.drillRemoved.at, 0, h.drillRemoved.word);
+  if (h.phase === 'drill' && s.pending && s.drill && s.drill[h.i]) s.pending.add(s.drill[h.i].id);
   if (h.right) s.right--;
   if (h.wrong) s.wrong--;
   render();
@@ -511,6 +513,8 @@ function stepBack() {
    Мышью работает тоже, но основной сценарий — телефон. */
 function bindSwipe(card, o) {
   if (!card) return;
+  card.querySelectorAll(':scope > .swipe-badge').forEach(b => b.remove());
+  card.style.transform = ''; card.style.opacity = '';
   const badge = el('<div class="swipe-badge"></div>');
   card.appendChild(badge);
   let x0 = 0, y0 = 0, dx = 0, active = false, fired = false;
@@ -547,6 +551,29 @@ function bindSwipe(card, o) {
   card.addEventListener('mousedown', (e) => { start(e.clientX, e.clientY); e.preventDefault(); });
   window.addEventListener('mousemove', (e) => active && move(e.clientX, e.clientY));
   window.addEventListener('mouseup', end);
+}
+
+/* После ответа: при ошибке ждём, пока разберёшься, и даём выбрать — дальше
+   или показать слово ещё раз в этой же сессии. */
+function afterAnswer(box, card, ok, w, done) {
+  const auto = S.prog.set.autoNext !== false;
+  if (ok && auto) { setTimeout(() => done(false), 700); return; }
+  const panel = el(`<div class="after-answer ${ok ? 'ok' : 'no'}">
+    <button class="btn ghost" data-a="again">↺ Показать ещё раз</button>
+    <button class="btn primary" data-a="next">Дальше →</button>
+  </div>`);
+  const go = (again) => { panel.remove(); done(again); };
+  panel.querySelector('[data-a=next]').onclick = () => go(false);
+  panel.querySelector('[data-a=again]').onclick = () => go(true);
+  box.appendChild(panel);
+  if (card) bindSwipe(card, {                       // смахивание в любую сторону — дальше
+    rightLabel: 'дальше →', leftLabel: '← дальше',
+    onRight: () => go(false), onLeft: () => go(false),
+  });
+  S.session.keys = (e) => {
+    if (e.key === 'Enter' || e.code === 'Space' || /^[1-4]$/.test(e.key)) { e.preventDefault(); go(false); }
+    else if (e.key === 'r') go(true);
+  };
 }
 
 /* Наглядный счётчик: сколько верных ответов из пяти уже набрано */
@@ -774,6 +801,7 @@ function newWordCard(w, o) {
 
 function learnDrill() {
   const s = S.session, w = s.drill[s.i];
+  if (!s.pending) s.pending = new Set(s.drill.map(x => x.id));
   if (!w) {
     const n = s.toTrain.length;
     S.session = null;
@@ -783,13 +811,19 @@ function learnDrill() {
   }
   // чередуем направления: грузинский → русский, затем русский → грузинский
   const mode = s.i % 2 === 0 ? 'ka2ru' : 'ru2ka';
+  const left = s.pending.size;
   return exerciseChoice(w, mode, {
-    title: `Закрепление ${s.i + 1} из ${s.drill.length} · ${mode === 'ka2ru' ? 'выберите перевод' : 'выберите слово по-грузински'}`,
-    progress: s.i / s.drill.length,
-    onDone: (ok) => {
+    title: `Закрепление · осталось ${plural(left, 'слово', 'слова', 'слов')} · ` +
+           `${mode === 'ka2ru' ? 'выберите перевод' : 'выберите слово по-грузински'}`,
+    progress: (s.drill.length - left) / s.drill.length,
+    onDone: (ok, again) => {
       s.hist = s.hist || [];
       s.hist.push({ snap: snapshot(w), i: s.i, phase: 'drill' });
-      answerGrade(w, ok); s.i++; render();
+      answerGrade(w, ok);
+      // закрепление не заканчивается, пока каждое слово не будет названо верно
+      if (ok) s.pending.delete(w.id); else s.drill.push(w);
+      if (again && ok) { s.drill.push(w); s.pending.add(w.id); }
+      s.i++; render();
     },
   });
 }
@@ -826,12 +860,13 @@ ROUTES.review = function () {
     progress: s.i / s.total,
     backwards: rep % 2 === 1,            // чередуем: грузинский→русский, затем русский→грузинский
     reps: rep,
-    onDone: (ok) => {
+    onDone: (ok, again) => {
       s.hist = s.hist || [];
       s.hist.push({ snap: snapshot(w), i: s.i, right: ok, wrong: !ok });
       const res = answerGrade(w, ok);
       ok ? s.right++ : s.wrong++;
       if (res.s === 'mastered') toast(`🎓 «${w.ka}» выучено полностью!`);
+      if (again) { s.queue.push(w); s.total++; }
       s.i++; render();
     },
   };
@@ -887,11 +922,12 @@ ROUTES.mixed = function () {
   const p = wp(w.id), rep = p.r || 0;
   return exerciseReview(w, Object.assign({}, head, {
     reps: rep, backwards: rep % 2 === 1, mastered: p.s === 'mastered',
-    onDone: (ok) => {
+    onDone: (ok, again) => {
       s.hist.push({ snap: snapshot(w), i: s.i, right: ok, wrong: !ok });
       const res = answerGrade(w, ok);
       ok ? s.right++ : s.wrong++;
       if (res.s === 'mastered') toast(`🎓 «${w.ka}» выучено полностью!`);
+      if (again) { s.queue.push({ type: 'review', w }); s.total++; }
       s.i++; render();
     },
   }));
@@ -993,7 +1029,7 @@ function exerciseChoice(w, mode, o) {
         <div class="word-tr">${esc(w.tr)}</div>
         <div class="word-ru" style="font-size:17px;margin-top:8px">${esc(w.ru)}</div></div>`));
     }
-    setTimeout(() => o.onDone(ok), ok ? 620 : 1900);
+    afterAnswer(box, null, ok, w, (again) => o.onDone(ok, again));
   };
   $$('.opt', box).forEach(b => b.onclick = () => answer(+b.dataset.i));
   bindBack(box);
@@ -1121,7 +1157,7 @@ function exerciseTyping(w, o) {
         (typed ? `<br><span class="was">вы написали: ${esc(typed)}</span>` : '');
     speak(w.ka);
     $$('.answer-actions .btn', box).forEach(b => b.disabled = true);
-    setTimeout(() => o.onDone(ok), ok ? 1100 : 2200);
+    afterAnswer(box, null, ok, w, (again) => o.onDone(ok, again));
   };
   const check = () => {
     const typed = input.value.trim();
@@ -1186,8 +1222,9 @@ function exerciseReview(w, o) {
     reveal.hidden = false;
     speak(w.ka);
     $$('#grade button, #tools button', box).forEach(b => b.disabled = true);
-    box.querySelector('.review-card').classList.add(ok ? 'said-yes' : 'said-no');
-    setTimeout(() => o.onDone(ok), delay != null ? delay : (ok ? 700 : 1500));
+    const card = box.querySelector('.review-card');
+    card.classList.add(ok ? 'said-yes' : 'said-no');
+    afterAnswer(box, card, ok, w, (again) => o.onDone(ok, again));
   };
 
   const look = () => { reveal.hidden = false; speak(w.ka); tools.querySelector('[data-t=look]').classList.add('used'); };
@@ -1284,7 +1321,7 @@ function exerciseBuild(w, o) {
     if (!ok) { slot.textContent = target; speak(w.ka); }
     $$('.letters button', box).forEach(b => b.disabled = true);
     $$('.answer-actions .btn', box).forEach(b => b.disabled = true);   // ответ уже показан — не даём его стереть
-    setTimeout(() => o.onDone(ok), ok ? 700 : 1700);
+    afterAnswer(box, null, ok, w, (again) => o.onDone(ok, again));
   };
   const redraw = () => { slot.textContent = built || '…'; };
   redraw();
@@ -1976,6 +2013,8 @@ function openSettings() {
         `<span data-sw="refresh">${sw(st.refresh !== false)}</span>`)}
       ${row('Инвертировать смахивания', 'Поменять местами «вспомнил» и «не вспомнил»',
         `<span data-sw="invertSwipe">${sw(st.invertSwipe)}</span>`)}
+      ${row('Сразу к следующему слову', 'При верном ответе идти дальше без нажатия. При ошибке приложение ждёт всегда',
+        `<span data-sw="autoNext">${sw(st.autoNext !== false)}</span>`)}
     </div>
 
     <div class="set-sect">Произношение</div>
@@ -2003,8 +2042,9 @@ function openSettings() {
 
   $$('[data-sw]', bg).forEach(node => node.onclick = () => {
     const k = node.dataset.sw;
-    st[k] = k === 'refresh' ? !(st[k] !== false) : !st[k];
-    node.firstElementChild.classList.toggle('on', k === 'refresh' ? st[k] !== false : !!st[k]);
+    const tri = (k === 'refresh' || k === 'autoNext');
+    st[k] = tri ? !(st[k] !== false) : !st[k];
+    node.firstElementChild.classList.toggle('on', tri ? st[k] !== false : !!st[k]);
     saveProgress();
 
   });
