@@ -13,6 +13,7 @@ const L = {
     alphabet: 'data/alphabet.json',
     audio: 'data/audio_index.json',
     mnemonics: 'data/mnemonics.json',
+    examples: 'data/examples.json',
   },
 
   voice: {
