@@ -449,9 +449,10 @@ ROUTES.home = function () {
 
     <div class="chart-card">
       <h3>Активность за 14 дней</h3>
-      <p class="cap">Повторено уникальных слов и выучено полностью</p>
-      <canvas id="home-chart" height="158"></canvas>
+      <p class="cap">Взято новых, повторено уникальных и выучено полностью · листается вбок</p>
+      <div class="chart-scroll"><canvas id="home-chart" height="158"></canvas></div>
       <div class="legend">
+        <span><i class="dot" style="background:var(--gold)"></i>взято новых</span>
         <span><i class="dot" style="background:var(--accent)"></i>повторено</span>
         <span><i class="dot" style="background:var(--green)"></i>выучено полностью</span>
       </div>
@@ -1794,9 +1795,15 @@ function axisLabels(c, buckets, pad, w, h, xOf) {
 
 function drawActivity(cv, buckets, hover) {
   if (!cv) return;
+  const wrap = cv.parentElement;
+  const MIN_GROUP = 46;                    // ширина группы столбцов, при которой всё читается
+  if (wrap && wrap.classList.contains('chart-scroll')) {
+    const need = buckets.length * MIN_GROUP + 44;
+    cv.style.width = Math.max(wrap.clientWidth, need) + 'px';
+  }
   const { c, w, h } = prepCanvas(cv, 158);
   const pad = { l: 34, r: 10, t: 20, b: 22 };
-  const max = Math.max(4, ...buckets.map(d => Math.max(d.rev, d.new)));
+  const max = Math.max(4, ...buckets.map(d => Math.max(d.started, d.rev, d.new)));
   const bw = (w - pad.l - pad.r) / buckets.length;
   const ih = h - pad.t - pad.b;
   c.strokeStyle = css('--line'); c.lineWidth = 1;
@@ -1815,29 +1822,41 @@ function drawActivity(cv, buckets, hover) {
       c.fillStyle = color;
       c.beginPath(); c.roundRect(x + off, h - pad.b - bh, wd, Math.max(bh, val ? 2 : 0), 3); c.fill();
     };
-    const gap = Math.min(bw * 0.14, 5);
-    const barW = Math.max(2, (bw - gap * 3) / 2);
-    bar(d.rev, css('--accent'), gap, barW);
-    bar(d.new, css('--green'), gap * 2 + barW, barW);
-    if (bw > 26) {                                   // подпись значения над столбцом
-      c.font = '10px system-ui'; c.textAlign = 'center';
-      if (d.rev) { c.fillStyle = css('--muted');
-        c.fillText(String(d.rev), x + gap + barW / 2, h - pad.b - ih * (d.rev / max) - 4); }
-      if (d.new) { c.fillStyle = css('--green');
-        c.fillText(String(d.new), x + gap * 2 + barW * 1.5, h - pad.b - ih * (d.new / max) - 4); }
+    // три серии: взято новых, повторено, выучено полностью
+    const gap = Math.min(bw * 0.1, 4);
+    const barW = Math.max(2, (bw - gap * 4) / 3);
+    bar(d.started, css('--gold'), gap, barW);
+    bar(d.rev, css('--accent'), gap * 2 + barW, barW);
+    bar(d.new, css('--green'), gap * 3 + barW * 2, barW);
+    if (bw > 40) {                                   // подписи, когда столбцы не жмутся
+      c.font = '9.5px system-ui'; c.textAlign = 'center';
+      const label = (val, color, cx) => {
+        if (!val) return;
+        c.fillStyle = color;
+        c.fillText(String(val), cx, h - pad.b - ih * (val / max) - 4);
+      };
+      label(d.started, css('--gold'), x + gap + barW / 2);
+      label(d.rev, css('--accent'), x + gap * 2 + barW * 1.5);
+      label(d.new, css('--green'), x + gap * 3 + barW * 2.5);
       c.textAlign = 'start';
     }
     zones.push({
       i, x0: x, x1: x + bw, cx: x + bw / 2,
-      top: h - pad.b - ih * (Math.max(d.rev, d.new) / max),
-      html: `<b>${d.full}</b><br><i style="background:${css('--accent')}"></i>повторено: ${d.rev}` +
-            `<br><i style="background:${css('--green')}"></i>выучено: ${d.new}` +
-            (d.started ? `<br><i style="background:${css('--gold')}"></i>взято новых: ${d.started}` : '') +
+      top: h - pad.b - ih * (Math.max(d.started, d.rev, d.new) / max),
+      html: `<b>${d.full}</b>` +
+            `<br><i style="background:${css('--gold')}"></i>взято новых: ${d.started}` +
+            `<br><i style="background:${css('--accent')}"></i>повторено: ${d.rev}` +
+            `<br><i style="background:${css('--green')}"></i>выучено полностью: ${d.new}` +
             (d.known ? `<br><i style="background:${css('--slate')}"></i>отмечено «знаю»: ${d.known}` : ''),
     });
   });
   axisLabels(c, buckets, pad, w, h, (i) => pad.l + i * bw + bw / 2);
   chartTooltip(cv, zones, (i) => { if (i !== hover) drawActivity(cv, buckets, i); });
+  // при первой отрисовке показываем свежие дни — правый край
+  if (hover == null && wrap && wrap.classList.contains('chart-scroll') && !wrap.dataset.scrolled) {
+    wrap.scrollLeft = wrap.scrollWidth;
+    wrap.dataset.scrolled = '1';
+  }
 }
 
 function drawCumulative(cv, buckets, hover) {
@@ -1944,7 +1963,7 @@ ROUTES.stats = function () {
     <div class="chart-card" style="margin-bottom:16px">
       <h3>Активность ${periodLabel}</h3>
       <p class="cap">Все категории и уровни · одно слово считается один раз в сутки</p>
-      <canvas id="c-rev" height="164"></canvas>
+      <div class="chart-scroll"><canvas id="c-rev" height="164"></canvas></div>
       <div class="metrics">
         <div class="mrow mhead"><span class="mtot">Всего</span><span class="mper">${periodLabel.replace('за ', '')}</span><span></span><span></span></div>
         ${legendRow('var(--green)', 'Полностью выучено', c.mastered, sum('new'))}
