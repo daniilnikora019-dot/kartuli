@@ -1,10 +1,10 @@
 /* Офлайн-кэш: оболочка и словарь — заранее, озвучка — по мере прослушивания. */
-const SHELL = 'kartuli-shell-v2';
+const SHELL = 'kartuli-shell-v3';
 const AUDIO = 'kartuli-audio-v1';
 const AUDIO_LIMIT = 1200;                    // сколько озвучек держать офлайн
 const SHELL_FILES = [
   './', './index.html', './style.css', './app.js', './manifest.json',
-  './icons/icon-192.png', './icons/apple-touch-icon.png',
+  './icons/icon-192-v2.png', './icons/apple-touch-icon-v2.png',
   'data/words.json', 'data/alphabet.json', 'data/audio_index.json', 'data/mnemonics.json',
 ];
 
