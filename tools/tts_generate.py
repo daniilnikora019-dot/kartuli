@@ -18,6 +18,12 @@ def collect():
     for row in json.load(open(f'{BASE}/data/alphabet.json', encoding='utf-8')):
         texts.append(row[1])          # название буквы
         texts.append(row[5])          # слово-пример
+    # предложения-примеры озвучиваются тем же голосом и тем же индексом
+    ex = f'{BASE}/data/examples.json'
+    if os.path.exists(ex):
+        for lst in json.load(open(ex, encoding='utf-8')).values():
+            for ka, _ru in lst:
+                texts.append(ka)
     seen, out = set(), []
     for t in texts:
         t = t.strip()
