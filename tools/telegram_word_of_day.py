@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Слово дня в Telegram: текст + озвучка. Запускается по расписанию через launchd."""
+"""Рассылка в Telegram, запускается по расписанию через launchd.
+
+  без флагов   слово дня: текст, транскрипция, перевод и озвучка
+  --quiz       тест одного слова викториной Telegram: четыре варианта,
+               направление чередуется по дням (грузинское→русское и обратно)
+  --dry-run    показать, что было бы отправлено, и ничего не слать
+  --add        добавить в рассылку всех, кто написал боту
+  --list       показать получателей
+"""
 import json, os, random, sys, urllib.request, urllib.parse, datetime, mimetypes
 
 BASE = os.path.expanduser('~/Library/Application Support/kartuli')
 CFG = f'{BASE}/telegram_config.json'
 HIST = f'{BASE}/data/wod_history.json'
+QUIZ_HIST = f'{BASE}/data/quiz_history.json'
 API = 'https://api.telegram.org/bot{token}/{method}'
 
 
@@ -115,6 +124,111 @@ def pick_word(cfg):
     return w, data['categories']
 
 
+
+# ---------------------------------------------------------------- тест дня
+
+def pick_quiz(cfg):
+    """Слово для теста и три отвлекающих варианта.
+
+    Отвлекающие подбираются не случайно: сначала из той же категории и уровня,
+    затем той же части речи, и всегда «слово к слову, фраза к фразе». Случайный
+    набор делает тест бессмысленным — правильный ответ виден, не зная языка.
+    """
+    data = json.load(open(f'{BASE}/data/words.json', encoding='utf-8'))
+    words = [w for w in data['words'] if w.get('q')]
+    hist = json.load(open(QUIZ_HIST, encoding='utf-8')) if os.path.exists(QUIZ_HIST) else {}
+    asked = set(hist.get('asked', []))
+
+    levels = cfg.get('levels') or ['A1', 'A2', 'B1']
+    cats = cfg.get('categories') or []
+    def plain(w):
+        # первый перевод должен быть словом, а не грамматической пометой вроде
+        # «кем-либо (творитель действия)» — вопросом такое не задать
+        ru = w['ru'].split(',')[0].strip()
+        return ru and '(' not in ru and len(ru) <= 40
+
+    pool = [w for w in words
+            if w['lvl'] in levels and plain(w) and (not cats or any(c in cats for c in w['cats']))]
+    fresh = [w for w in pool if w['id'] not in asked] or pool
+    if len(fresh) == len(pool):
+        asked = set()                                   # круг пройден, начинаем заново
+
+    rnd = random.Random(datetime.date.today().toordinal() * 31 + 7)
+    fresh.sort(key=lambda w: (-w['f'], w['id']))        # сначала употребимые, порядок устойчив
+    w = rnd.choice(fresh[:max(40, len(fresh) // 15)])
+
+    multi = ' ' in w['ka']
+    def score(x):
+        if x['id'] == w['id'] or x['ru'] == w['ru'] or x['ka'] == w['ka']:
+            return -1
+        if x['ru'].split(',')[0].strip() == w['ru'].split(',')[0].strip():
+            return -1                                   # синоним — как отвлекающий не годится
+        s = 0
+        s += 30 if set(x['cats']) & set(w['cats']) else 0
+        s += 20 if x['lvl'] == w['lvl'] else 0
+        s += 15 if x.get('pos') == w.get('pos') else 0
+        s += 12 if (' ' in x['ka']) == multi else 0
+        return s
+
+    ranked = sorted((x for x in pool if score(x) > 0), key=lambda x: (-score(x), rnd.random()))
+    others = ranked[:3]
+    if len(others) < 3:                                 # редкий случай узкой категории
+        others += [x for x in words if score(x) > 0 and x not in others][:3 - len(others)]
+
+    asked.add(w['id'])
+    hist['asked'] = list(asked)
+    hist['last'] = {'date': str(datetime.date.today()), 'ka': w['ka'], 'ru': w['ru']}
+    json.dump(hist, open(QUIZ_HIST, 'w', encoding='utf-8'), ensure_ascii=False)
+    return w, others, rnd
+
+
+def send_quiz(cfg, chats, dry=False):
+    w, others, rnd = pick_quiz(cfg)
+    # направление чередуется по дням: сегодня переводим с грузинского, завтра на грузинский
+    ka_to_ru = datetime.date.today().toordinal() % 2 == 0
+    if ka_to_ru:
+        question = f"Что значит «{w['ka']}»?"
+        options = [x['ru'].split(',')[0].strip() for x in ([w] + others)]
+    else:
+        question = f"Как будет «{w['ru'].split(',')[0].strip()}»?"
+        options = [x['ka'] for x in ([w] + others)]
+
+    order = list(range(4))
+    rnd.shuffle(order)
+    options = [options[i][:100] for i in order]
+    correct = order.index(0)
+    explanation = f"{w['ka']} — {w['ru']} [{w['tr']}]"[:200]
+
+    if dry:
+        print(f"тест дня ({'грузинское → русское' if ka_to_ru else 'русское → грузинское'}):")
+        print(f'  вопрос: {question}')
+        for i, o in enumerate(options):
+            print(f'  {"✓" if i == correct else " "} {o}')
+        print(f'  пояснение: {explanation}')
+        print(f'  получателей: {len(chats)}')
+        return
+
+    sent, failed = [], []
+    for chat_id in chats:
+        try:
+            api(cfg, 'sendPoll', {
+                'chat_id': chat_id,
+                'question': question[:300],
+                'options': json.dumps(options, ensure_ascii=False),
+                'type': 'quiz',
+                'correct_option_id': correct,
+                'explanation': explanation,
+                'is_anonymous': 'false',
+                'is_closed': 'false',
+            })
+            sent.append(chat_id)
+        except Exception as e:
+            failed.append(f'{chat_id}: {e}')
+    print(f"тест отправлен ({len(sent)} получателям): {w['ka']} — {w['ru']}")
+    for f in failed:
+        print('не доставлено —', f)
+
+
 def main():
     cfg = load_cfg()
     if '--add' in sys.argv:
@@ -126,6 +240,10 @@ def main():
             print(f'  {found.get(i, "—")} ({i})')
         return
     chats = resolve_chats(cfg)
+    dry = '--dry-run' in sys.argv
+    if '--quiz' in sys.argv:
+        send_quiz(cfg, chats, dry)
+        return
     w, cats = pick_word(cfg)
     cat_names = {c['id']: (c['icon'], c['name']) for c in cats}
     icon, cname = cat_names.get(w['cats'][0], ('📖', 'Общая лексика'))
@@ -139,6 +257,11 @@ def main():
     voice = cfg.get('voice', 'f')
     path = f'{BASE}/audio/{voice}/{h}.mp3' if h else None
     audio = open(path, 'rb').read() if path and os.path.exists(path) else None
+    if dry:
+        print('слово дня:'); print(text.replace('<b>', '').replace('</b>', '')
+                                      .replace('<i>', '').replace('</i>', ''))
+        print(f'озвучка: {"есть" if audio else "нет"} · получателей: {len(chats)}')
+        return
     sent, failed = [], []
     for chat_id in chats:
         try:

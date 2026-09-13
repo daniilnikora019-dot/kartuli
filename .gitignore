@@ -1,6 +1,7 @@
 # секреты и локальное состояние — в репозиторий не попадают
 telegram_config.json
 data/wod_history.json
+data/quiz_history.json
 
 # памятка по проекту — только локально, публиковать её незачем
 README.md
