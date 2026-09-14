@@ -91,6 +91,17 @@ else:
         errors.append(f'код обращается к L.{path}, но такого ключа нет в config.js')
 
 # в общий код не должно просачиваться название конкретного языка
+# уроки грамматики: файл необязателен, но если он есть — должен быть целым
+les_path = f'{ROOT}/data/lessons.json'
+if os.path.exists(les_path):
+    les = json.load(open(les_path, encoding='utf-8'))
+    for l in les['lessons']:
+        if len(l['quiz']) != 10:
+            errors.append(f"урок {l['id']}: вопросов {len(l['quiz'])}, а нужно 10")
+        for qi, q in enumerate(l['quiz'], 1):
+            if not 0 <= q['a'] < len(q['o']):
+                errors.append(f"урок {l['id']} вопрос {qi}: неверный номер ответа")
+
 lang_marks = re.compile(r'грузин|Грузин|румын|Румын|kartuli|romana|ka-GE|ro-RO|мхедрули|[Ⴀ-ჿ]')
 for f in ['app.js', 'sw.js']:
     for n, line in enumerate(open(f'{ROOT}/{f}', encoding='utf-8'), 1):

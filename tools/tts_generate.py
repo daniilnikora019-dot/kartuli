@@ -24,6 +24,14 @@ def collect():
         for lst in json.load(open(ex, encoding='utf-8')).values():
             for ka, _ru in lst:
                 texts.append(ka)
+    # фразы из уроков грамматики — тот же голос и тот же индекс
+    ls = f'{BASE}/data/lessons.json'
+    if os.path.exists(ls):
+        for les in json.load(open(ls, encoding='utf-8'))['lessons']:
+            for kind, body in les['blocks']:
+                if kind == 'ex':
+                    for ka, _tr, _ru in body:
+                        texts.append(ka)
     seen, out = set(), []
     for t in texts:
         t = t.strip()
