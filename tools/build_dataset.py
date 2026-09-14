@@ -7,13 +7,7 @@ WIKT = '/tmp/ka_ru_wikt.jsonl'
 FREQ_FILES = ['/tmp/kat_wikipedia_2021_100K/kat_wikipedia_2021_100K-words.txt',
               '/tmp/kat-ge_web_2019_1M/kat-ge_web_2019_1M-words.txt']
 
-TRANSLIT = {'ა':'a','ბ':'b','გ':'g','დ':'d','ე':'e','ვ':'v','ზ':'z','თ':'t','ი':'i',
- 'კ':"k'",'ლ':'l','მ':'m','ნ':'n','ო':'o','პ':"p'",'ჟ':'zh','რ':'r','ს':'s','ტ':"t'",
- 'უ':'u','ფ':'p','ქ':'k','ღ':'gh','ყ':"q'",'შ':'sh','ჩ':'ch','ც':'ts','ძ':'dz','წ':"ts'",
- 'ჭ':"ch'",'ხ':'kh','ჯ':'j','ჰ':'h','ჱ':'e','ჲ':'y','ჳ':'w','ჴ':'q','ჵ':'o','ჶ':'f'}
-
-def translit(w):
-    return ''.join(TRANSLIT.get(ch, ch) for ch in w)
+from translit_ka import TRANSLIT, translit          # таблица вынесена, чтобы её могли брать и другие инструменты
 
 # ---------- внешние источники подтверждения написания ----------
 EN_WIKT = '/tmp/ka_en_wikt.jsonl'

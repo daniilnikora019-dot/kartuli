@@ -47,6 +47,9 @@ else:
         need.update(re.findall(r":\s*'([^']+)'", data.group(1)))
     elif cfg:
         errors.append('в config.js не найден раздел data')
+    # файлы, объявленные вне раздела data (например, уроки грамматики)
+    for extra in re.findall(r"^\s*\w+:\s*'(data/[^']+)'", cfg, re.M):
+        need.add(extra)
 
 for ref in sorted(need):
     if not os.path.exists(os.path.join(SITE, ref.lstrip('./'))):
