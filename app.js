@@ -2195,6 +2195,22 @@ ROUTES.alphabet = function () {
    алфавиту — пока круг не пройден, повторов нет, поэтому за круг встречается
    каждая буква. Кончилась колода — тасуем заново, следя, чтобы первая буква
    нового круга не совпала с последней буквой прошлого. */
+/* Слова на эту букву — азбучная часть тренировки: буква запоминается не сама
+   по себе, а вместе с тем, с чего она начинается. Первым идёт слово-пример из
+   данных алфавита, дальше — самые частые слова словаря на ту же букву.
+   Латинской записи здесь нет намеренно: она назвала бы звук, а его как раз
+   и спрашивают. Послушать слово можно кнопкой — это выбор человека. */
+function abcWords(row, n = 3) {
+  const out = [];
+  if (row[5]) out.push([row[5], row[6] || '']);
+  const rest = S.trainable
+    .filter(w => w.ka.startsWith(row[0]) && w.ka !== row[5] && audioUrl(w.ka))
+    .sort((a, b) => (b.f || 0) - (a.f || 0))
+    .slice(0, n - out.length);
+  for (const w of rest) out.push([w.ka, w.ru]);
+  return out;
+}
+
 function alphaDeck(prev) {
   const deck = shuffle(S.alphabet.slice());
   if (prev && deck.length > 1 && deck[0][0] === prev) deck.push(deck.shift());
@@ -2215,16 +2231,27 @@ function alphabetQuiz() {
     <div class="progress-line"><i style="width:${q.i / q.deck.length * 100}%"></i></div>
     <div class="trainer-head">
       <button class="btn ghost sm back-btn">← Назад</button>
-      <p class="sub">${q.asked ? `Пройдено ${q.asked} · верно ${q.right}` : `Круг по всем ${q.deck.length} буквам`}</p>
+      <p class="sub">Пройдено ${q.asked} · верно ${q.right}</p>
       <span class="head-spacer"></span>
     </div>
-    <div class="word-card">
-      <div class="word-ka ka" style="font-size:64px">${a[0]}</div>
-      <button class="speak lg">${ico('play')}</button>
+    <div class="word-card alpha-card">
+      <div class="word-ka ka">${a[0]}</div>
+      <button class="speak">${ico('play')}</button>
       <div class="word-tr">какой это звук?</div>
     </div>
     <div class="options">${opts.map((o, i) => `<button class="opt" data-i="${i}">${i + 1}. <b>${esc(o[3])}</b> — ${esc(o[4])}</button>`).join('')}</div>
+    <div class="abc">
+      <div class="abc-head">Слова на эту букву</div>
+      ${abcWords(a).map(([ka, ru], i) => `
+        <div class="abc-row">
+          <b class="${L.script}">${esc(ka)}</b>
+          <span>${esc(ru)}</span>
+          ${audioUrl(ka) ? `<button class="abc-play" data-w="${i}" title="Послушать">${ico('play')}</button>` : ''}
+        </div>`).join('')}
+    </div>
   </div>`);
+  const abc = abcWords(a);
+  $$('.abc-play', box).forEach(b => b.onclick = () => speak(abc[+b.dataset.w][0]));
   // До ответа звук сам не играет: вопрос как раз про звук буквы, и автоозвучка
   // его выдавала бы. Послушать до ответа можно кнопкой — это выбор человека.
   // После ответа буква произносится сама: подсказывать уже нечего, зато слышно,
