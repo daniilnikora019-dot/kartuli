@@ -318,7 +318,8 @@ function render() {
   const main = $('#main');
   main.innerHTML = '';
   main.appendChild(ROUTES[S.route]());
-  main.firstElementChild.classList.add('fade');
+  main.firstElementChild.classList.add(S.backAnim ? 'slide-back' : 'fade');
+  S.backAnim = false;
   const c = counts();
   const badge = $('#b-due');
   if (badge) badge.hidden = !(c.due || c.fresh);
@@ -2980,24 +2981,46 @@ function paintWallpaper() {
 
 /* ---------------- возврат смахиванием от левого края ----------------
    Приложение с экрана «Домой» открывается без браузерных кнопок, и привычного
-   жеста «назад» в нём просто нет. Делаем свой: касание начинается у самого края,
-   палец идёт вправо — уходим на экран выше. Целью служит та же ссылка «Назад»,
-   что нарисована сверху, поэтому жест работает ровно там, где возврат вообще
-   есть, и ведёт ровно туда же. В тренировках он выключен: там смахивание по
-   карточке уже означает ответ, и путать эти два жеста нельзя. */
+   жеста «назад» в нём просто нет. Делаем свой по образцу системных приложений:
+   экран идёт за пальцем, у его левого края тень, и решают не пиксели, а доля
+   ширины — уводить надо почти до середины (45%), либо коротко, но быстро
+   (бросок от 0,6 пикселя в миллисекунду). Так случайное задевание края
+   переходом не заканчивается.
+
+   Возврат виден глазом: старый экран уезжает вправо до конца, новый выходит
+   из-за левого края и проявляется. Без этого переключение было мгновенным,
+   и понять, что произошло, можно было только по содержимому.
+
+   В тренировках жест выключен: там смахивание по карточке уже означает ответ. */
+/* Касание по полосе состояния — той, где часы, — поднимает страницу наверх,
+   как это делают системные приложения. Приложение с экрана «Домой» занимает
+   и эту полосу, поэтому касание по ней доходит до страницы. Полоса ровно такой
+   высоты, какую система отвела под вырез: на устройствах без выреза высота
+   нулевая, и полоса ничему не мешает. */
+function bindStatusBarTap() {
+  const strip = el('<div id="to-top" aria-hidden="true"></div>');
+  strip.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.body.appendChild(strip);
+}
+
 function bindEdgeBack() {
-  const EDGE = 24, GO = 70, MAX_SLIP = 60;
-  let x0 = 0, y0 = 0, dx = 0, live = false;
+  const EDGE = 28, PART = 0.45, FLING = 0.6, FLING_MIN = 60, SLIP = 60;
+  let x0 = 0, y0 = 0, t0 = 0, dx = 0, live = false;
   const main = () => $('#main');
   const target = () => $('.modal-bg') || $('#main .back-link');
   const busy = () => S.session || S.alphaQuiz || S.quiz;
+  const set = (v, shadow) => {
+    const m = main();
+    m.style.transform = v ? `translateX(${v}px)` : '';
+    m.style.boxShadow = shadow ? '-14px 0 28px rgba(0,0,0,.28)' : '';
+  };
 
   document.addEventListener('touchstart', (e) => {
     live = false;
     if (e.touches.length !== 1 || busy()) return;
     const t = e.touches[0];
     if (t.clientX > EDGE || !target()) return;
-    x0 = t.clientX; y0 = t.clientY; dx = 0; live = true;
+    x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; live = true;
   }, { passive: true });
 
   document.addEventListener('touchmove', (e) => {
@@ -3005,21 +3028,31 @@ function bindEdgeBack() {
     const t = e.touches[0];
     dx = t.clientX - x0;
     // палец повело вертикально — это прокрутка, а не возврат
-    if (Math.abs(t.clientY - y0) > MAX_SLIP) { live = false; main().style.transform = ''; return; }
-    if (dx > 0) main().style.transform = `translateX(${Math.min(dx, 120)}px)`;
+    if (Math.abs(t.clientY - y0) > SLIP) { live = false; set(0, false); return; }
+    if (dx > 0) set(dx, true);
   }, { passive: true });
 
   document.addEventListener('touchend', () => {
     if (!live) return;
     live = false;
-    const m = main();
-    m.style.transition = 'transform .18s';
-    m.style.transform = '';
-    setTimeout(() => { m.style.transition = ''; }, 220);
-    if (dx <= GO) return;
+    const m = main(), w = window.innerWidth;
+    const speed = dx / Math.max(1, Date.now() - t0);
+    const go_back = dx > w * PART || (dx > FLING_MIN && speed > FLING);
+    if (!go_back) {                                   // не дотянули — экран возвращается на место
+      m.style.transition = 'transform .2s ease-out, box-shadow .2s';
+      set(0, false);
+      setTimeout(() => { m.style.transition = ''; }, 240);
+      return;
+    }
     const t = target();
-    if (!t) return;
-    if (t.classList.contains('modal-bg')) t.remove(); else t.click();
+    if (!t) { set(0, false); return; }
+    m.style.transition = 'transform .18s ease-out';
+    m.style.transform = `translateX(${w}px)`;          // уводим до конца, чтобы уход был виден
+    setTimeout(() => {
+      m.style.transition = ''; m.style.transform = ''; m.style.boxShadow = '';
+      S.backAnim = true;                              // следующий экран выедет слева
+      if (t.classList.contains('modal-bg')) t.remove(); else t.click();
+    }, 180);
   }, { passive: true });
 }
 
@@ -3064,6 +3097,7 @@ async function boot() {
   }
   $$('.tab').forEach(b => b.onclick = () => go(b.dataset.go));
   bindEdgeBack();
+  bindStatusBarTap();
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input,select,textarea')) return;
     if (S.alphaQuiz && S.alphaKeys) S.alphaKeys(e);

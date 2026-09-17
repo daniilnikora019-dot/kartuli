@@ -431,6 +431,17 @@ h2.sect + .menu-card{margin-bottom:18px}
 .hint-pop::after{display:none}
 .hint-pop.above::before{top:auto;bottom:-6.5px;border-width:0 1px 1px 0}
 
+/* полоса над вырезом: касание по ней поднимает страницу наверх */
+#to-top{
+  position:fixed;top:0;left:0;right:0;z-index:60;
+  height:env(safe-area-inset-top,0px);
+}
+
+/* возврат смахиванием: пришедший экран выезжает из-за левого края */
+@keyframes slide-back{from{transform:translateX(-26%);opacity:.35}to{transform:none;opacity:1}}
+.slide-back{animation:slide-back .24s cubic-bezier(.22,.61,.36,1)}
+#main{will-change:transform}
+
 /* ---------- раздел грамматики ----------
    Урок читается подряд, как страница книги, поэтому текст выключен влево и
    мерой строки ограничен; таблицы спряжения прокручиваются вбок сами, чтобы
