@@ -318,7 +318,7 @@ function render() {
   const main = $('#main');
   main.innerHTML = '';
   main.appendChild(ROUTES[S.route]());
-  main.firstElementChild.classList.add(S.backAnim ? 'slide-back' : 'fade');
+  if (!S.backAnim) main.firstElementChild.classList.add('fade');
   S.backAnim = false;
   const c = counts();
   const badge = $('#b-due');
@@ -2981,46 +2981,60 @@ function paintWallpaper() {
 
 /* ---------------- возврат смахиванием от левого края ----------------
    Приложение с экрана «Домой» открывается без браузерных кнопок, и привычного
-   жеста «назад» в нём просто нет. Делаем свой по образцу системных приложений:
-   экран идёт за пальцем, у его левого края тень, и решают не пиксели, а доля
-   ширины — уводить надо почти до середины (45%), либо коротко, но быстро
-   (бросок от 0,6 пикселя в миллисекунду). Так случайное задевание края
-   переходом не заканчивается.
+   жеста «назад» в нём просто нет. Делаем свой, как в системных приложениях.
 
-   Возврат виден глазом: старый экран уезжает вправо до конца, новый выходит
-   из-за левого края и проявляется. Без этого переключение было мгновенным,
-   и понять, что произошло, можно было только по содержимому.
+   Главное здесь — предыдущий экран виден уже во время движения. Как только
+   палец касается края, экран, на который ведёт ссылка «Назад», рисуется слоем
+   ниже и ставится левее с затемнением. Дальше текущий экран идёт за пальцем,
+   а нижний подтягивается к своему месту и светлеет: получается, что верхний
+   лист сдвигают, открывая тот, что под ним.
+
+   Решают не пиксели, а доля ширины: увести надо почти до середины (45%), либо
+   коротко, но быстро — бросок от 0,6 пикселя в миллисекунду. Поэтому случайное
+   задевание края переходом не заканчивается. Не дотянули — оба экрана плавно
+   возвращаются на свои места.
 
    В тренировках жест выключен: там смахивание по карточке уже означает ответ. */
-/* Касание по полосе состояния — той, где часы, — поднимает страницу наверх,
-   как это делают системные приложения. Приложение с экрана «Домой» занимает
-   и эту полосу, поэтому касание по ней доходит до страницы. Полоса ровно такой
-   высоты, какую система отвела под вырез: на устройствах без выреза высота
-   нулевая, и полоса ничему не мешает. */
-function bindStatusBarTap() {
-  const strip = el('<div id="to-top" aria-hidden="true"></div>');
-  strip.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-  document.body.appendChild(strip);
-}
+const BACK_SAFE = ['home', 'dict', 'dictcat', 'menu', 'cats', 'lessons', 'alphabet', 'stats', 'about'];
 
 function bindEdgeBack() {
-  const EDGE = 28, PART = 0.45, FLING = 0.6, FLING_MIN = 60, SLIP = 60;
-  let x0 = 0, y0 = 0, t0 = 0, dx = 0, live = false;
+  const EDGE = 28, PART = 0.45, FLING = 0.6, FLING_MIN = 60, SLIP = 60, LAG = 0.3, DIM = 0.28;
+  let x0 = 0, y0 = 0, t0 = 0, dx = 0, live = false, under = null, link = null;
   const main = () => $('#main');
-  const target = () => $('.modal-bg') || $('#main .back-link');
   const busy = () => S.session || S.alphaQuiz || S.quiz;
-  const set = (v, shadow) => {
+
+  /* Нижний экран рисуем заранее, на касании: во время движения рисовать уже поздно. */
+  const showUnder = (route) => {
+    if (!BACK_SAFE.includes(route) || !ROUTES[route]) return null;
+    const box = el('<div id="under" aria-hidden="true"><div class="under-inner"></div><div class="under-dim"></div></div>');
+    try { $('.under-inner', box).appendChild(ROUTES[route]()); } catch (e) { return null; }
+    document.body.appendChild(box);
+    return box;
+  };
+  const place = (part) => {                            // part: 0 — начало жеста, 1 — конец
     const m = main();
-    m.style.transform = v ? `translateX(${v}px)` : '';
-    m.style.boxShadow = shadow ? '-14px 0 28px rgba(0,0,0,.28)' : '';
+    m.style.transform = `translateX(${dx}px)`;
+    m.style.boxShadow = '-14px 0 28px rgba(0,0,0,.28)';
+    if (!under) return;
+    $('.under-inner', under).style.transform = `translateX(${-window.innerWidth * LAG * (1 - part)}px)`;
+    $('.under-dim', under).style.opacity = String(DIM * (1 - part));
+  };
+  const clear = () => {
+    const m = main();
+    m.style.transition = ''; m.style.transform = ''; m.style.boxShadow = '';
+    if (under) { under.remove(); under = null; }
   };
 
   document.addEventListener('touchstart', (e) => {
     live = false;
     if (e.touches.length !== 1 || busy()) return;
     const t = e.touches[0];
-    if (t.clientX > EDGE || !target()) return;
+    if (t.clientX > EDGE) return;
+    link = $('.modal-bg') || $('#main .back-link');
+    if (!link) return;
     x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; live = true;
+    under = link.classList.contains('modal-bg') ? null : showUnder(link.dataset.back);
+    place(0);
   }, { passive: true });
 
   document.addEventListener('touchmove', (e) => {
@@ -3028,31 +3042,35 @@ function bindEdgeBack() {
     const t = e.touches[0];
     dx = t.clientX - x0;
     // палец повело вертикально — это прокрутка, а не возврат
-    if (Math.abs(t.clientY - y0) > SLIP) { live = false; set(0, false); return; }
-    if (dx > 0) set(dx, true);
+    if (Math.abs(t.clientY - y0) > SLIP) { live = false; clear(); return; }
+    if (dx >= 0) place(Math.min(1, dx / window.innerWidth));
   }, { passive: true });
 
   document.addEventListener('touchend', () => {
     if (!live) return;
     live = false;
     const m = main(), w = window.innerWidth;
-    const speed = dx / Math.max(1, Date.now() - t0);
-    const go_back = dx > w * PART || (dx > FLING_MIN && speed > FLING);
-    if (!go_back) {                                   // не дотянули — экран возвращается на место
-      m.style.transition = 'transform .2s ease-out, box-shadow .2s';
-      set(0, false);
-      setTimeout(() => { m.style.transition = ''; }, 240);
+    // очень короткие жесты в расчёт скорости не берём: рывок в один кадр
+    // (а иногда и одно событие) давал бы бесконечную скорость
+    const ms = Date.now() - t0;
+    const speed = ms > 30 ? dx / ms : 0;
+    const done = dx > w * PART || (dx > FLING_MIN && speed > FLING);
+    const ease = 'cubic-bezier(.22,.61,.36,1)';
+    const inner = under && $('.under-inner', under), dim = under && $('.under-dim', under);
+    if (inner) { inner.style.transition = `transform .22s ${ease}`; dim.style.transition = 'opacity .22s'; }
+    m.style.transition = `transform .22s ${ease}, box-shadow .22s`;
+
+    if (!done) {                                       // не дотянули — всё возвращается на место
+      dx = 0; place(0);
+      setTimeout(clear, 240);
       return;
     }
-    const t = target();
-    if (!t) { set(0, false); return; }
-    m.style.transition = 'transform .18s ease-out';
-    m.style.transform = `translateX(${w}px)`;          // уводим до конца, чтобы уход был виден
+    m.style.transform = `translateX(${w}px)`;          // верхний лист уходит целиком
+    if (inner) { inner.style.transform = 'none'; dim.style.opacity = '0'; }
     setTimeout(() => {
-      m.style.transition = ''; m.style.transform = ''; m.style.boxShadow = '';
-      S.backAnim = true;                              // следующий экран выедет слева
-      if (t.classList.contains('modal-bg')) t.remove(); else t.click();
-    }, 180);
+      clear();
+      if (link.classList.contains('modal-bg')) link.remove(); else link.click();
+    }, 220);
   }, { passive: true });
 }
 
