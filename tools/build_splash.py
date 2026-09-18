@@ -11,6 +11,8 @@
 Нужен fontTools (pip install fonttools). Переменный шрифт приводится к
 среднему начертанию (вес 500), чтобы мел был не слишком тонким и не жирным.
 Результат вписывается между пометками <!-- splash:start --> и <!-- splash:end -->.
+Стили заставки кладутся туда же, прямо в страницу: иначе доска ждала бы загрузки
+общего файла стилей, и на медленной сети вместо неё несколько секунд был белый экран.
 """
 import os, re, sys
 from fontTools.ttLib import TTFont
@@ -78,7 +80,10 @@ dust_freq = round(60 / upm, 4)
 body = '\n'.join(
     f'      <path class="chalk" pathLength="1" style="--i:{i}" d="{d}"/>'
     for i, d in enumerate(paths))
+SPLASH_CSS = '#splash{ position:fixed;inset:0;z-index:200;display:grid;place-items:center; background:var(--board,#1d2421); transition:opacity .38s ease; } #splash.out{opacity:0;pointer-events:none} #splash .chalk-word{width:min(78vw,520px);height:auto;overflow:visible;position:relative} #splash .wood{position:absolute;inset:0;width:100%;height:100%;opacity:.6;overflow:hidden} #splash .chalk{ fill:#f1ede2;fill-opacity:0;stroke:#f1ede2;stroke-opacity:.92; stroke-linecap:round;stroke-linejoin:round; stroke-dasharray:1;stroke-dashoffset:1; animation:chalk-draw .75s cubic-bezier(.45,.05,.4,1) forwards, chalk-fill .4s ease-out forwards; animation-delay:calc(var(--i) * .12s), calc(.7s + var(--i) * .12s); } @keyframes chalk-draw{to{stroke-dashoffset:0}} @keyframes chalk-fill{to{fill-opacity:.9}} @media (prefers-reduced-motion: reduce){#splash{display:none}}'
+
 svg = f'''<!-- splash:start -->
+<style>{SPLASH_CSS}</style>
 <div id="splash" aria-hidden="true" style="--board:{board};--board-deep:{board_deep}">
   <svg class="wood" viewBox="0 0 400 900" preserveAspectRatio="xMidYMid slice">
     <!-- Дерево столешницы: слой повёрнут, чтобы волокна шли по диагонали, и ровно такого
@@ -108,7 +113,9 @@ svg = f'''<!-- splash:start -->
     </g>
   </svg>
   <script>
-    /* у каждого открытия свой рисунок дерева */
+    /* у каждого открытия свой рисунок дерева; заодно запоминаем, когда заставка
+       появилась, — от этого момента, а не от начала загрузки, считаются её две секунды */
+    window.SPLASH_AT = performance.now();
     (function () {{
       var t = document.querySelectorAll('#splash feTurbulence[data-rand]');
       for (var i = 0; i < t.length; i++) t[i].setAttribute('seed', String(1 + Math.floor(Math.random() * 9999)));
