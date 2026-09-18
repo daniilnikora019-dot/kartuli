@@ -81,11 +81,14 @@ body = '\n'.join(
 svg = f'''<!-- splash:start -->
 <div id="splash" aria-hidden="true" style="--board:{board};--board-deep:{board_deep}">
   <svg class="wood" viewBox="0 0 400 900" preserveAspectRatio="xMidYMid slice">
-    <!-- Дерево столешницы: слой шире экрана и повёрнут, чтобы волокна шли по диагонали.
+    <!-- Дерево столешницы: слой повёрнут, чтобы волокна шли по диагонали, и ровно такого
+         размера, чтобы после поворота закрывать экран (плюс запас на изгиб волокон).
+         Больше нельзя: Safari не рисует фильтр, если его область на экране с тройной
+         плотностью пикселей больше примерно 16 миллионов точек, — так дерево и пропадало.
          Три слоя шума: длинные тонкие волокна с плавными изгибами, светлые прожилки
          для глубины и короткие засечки-поры вдоль волокна. Зерно у каждого запуска
          своё: номера шума перед показом меняет скрипт ниже. -->
-    <filter id="wood-grain" filterUnits="userSpaceOnUse" x="-500" y="-500" width="1400" height="1900"
+    <filter id="wood-grain" filterUnits="userSpaceOnUse" x="-258" y="-75" width="916" height="1050"
             color-interpolation-filters="sRGB">
       <feTurbulence data-rand type="fractalNoise" baseFrequency="0.0045 0.2" numOctaves="3" seed="23" result="fiber"/>
       <feTurbulence data-rand type="fractalNoise" baseFrequency="0.0028 0.009" numOctaves="2" seed="5" result="bend"/>
@@ -101,7 +104,7 @@ svg = f'''<!-- splash:start -->
       <feMerge><feMergeNode in="dark"/><feMergeNode in="light"/><feMergeNode in="pores"/></feMerge>
     </filter>
     <g transform="rotate(-34 200 450)">
-      <rect x="-500" y="-500" width="1400" height="1900" filter="url(#wood-grain)"/>
+      <rect x="-258" y="-75" width="916" height="1050" filter="url(#wood-grain)"/>
     </g>
   </svg>
   <script>
