@@ -1,0 +1,25 @@
+# Бесплатный проект Supabase засыпает, если неделю к базе почти не обращаются.
+# Тренажёры могут не открывать и дольше, поэтому базу раз в шесть часов
+# будит GitHub: один запрос на чтение без входа. Правила базы не отдают
+# без входа ни одной строки, так что запрос ничего не читает — он только
+# показывает Supabase, что проектом пользуются. Ключ тот же публичный,
+# что лежит в app.js.
+name: Supabase — не дать проекту уснуть
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Запрос к базе
+        env:
+          URL: https://lvkjktepfspbmwfyldxm.supabase.co
+          KEY: sb_publishable_X8pUVRuMBN-Y7rmQ_KZWNQ_h6GzZq6F
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "apikey: $KEY" "$URL/rest/v1/progress?select=app&limit=1")
+          echo "ответ базы: $code"
+          test "$code" = 200
