@@ -50,6 +50,9 @@ else:
     # файлы, объявленные вне раздела data (например, уроки грамматики)
     for extra in re.findall(r"^\s*\w+:\s*'(data/[^']+)'", cfg, re.M):
         need.add(extra)
+    gram = re.search(r'grammar:\s*\[(.*?)\]', cfg, re.S)
+    if gram:
+        need.update(re.findall(r"'([^']+)'", gram.group(1)))
 
 for ref in sorted(need):
     if not os.path.exists(os.path.join(SITE, ref.lstrip('./'))):

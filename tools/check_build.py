@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Проверка перед публикацией: словарь на месте, озвучка не разъехалась с ним."""
-import json, os, re, sys
+import glob, json, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 errors = []
@@ -98,8 +98,7 @@ else:
 
 # в общий код не должно просачиваться название конкретного языка
 # уроки грамматики: файл необязателен, но если он есть — должен быть целым
-les_path = f'{ROOT}/data/lessons.json'
-if os.path.exists(les_path):
+for les_path in sorted(glob.glob(f'{ROOT}/data/grammar/*.json')):
     les = json.load(open(les_path, encoding='utf-8'))
     for l in les['lessons']:
         if len(l['quiz']) != 10:

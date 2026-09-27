@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Озвучка словаря голосами Microsoft (ka-GE) через edge-tts."""
-import asyncio, hashlib, json, os, sys, time
+import asyncio, glob, hashlib, json, os, sys, time
 import edge_tts
 
 BASE = os.path.expanduser('~/Developer/apps/kartuli')
@@ -25,8 +25,7 @@ def collect():
             for ka, _ru in lst:
                 texts.append(ka)
     # фразы из уроков грамматики — тот же голос и тот же индекс
-    ls = f'{BASE}/data/lessons.json'
-    if os.path.exists(ls):
+    for ls in sorted(glob.glob(f'{BASE}/data/grammar/*.json')):
         for les in json.load(open(ls, encoding='utf-8'))['lessons']:
             for kind, body in les['blocks']:
                 if kind == 'ex':
