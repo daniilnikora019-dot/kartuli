@@ -3,7 +3,7 @@
 import asyncio, hashlib, json, os, sys, time
 import edge_tts
 
-BASE = os.path.expanduser('~/Library/Application Support/kartuli')
+BASE = os.path.expanduser('~/Developer/apps/kartuli')
 VOICES = {'f': 'ka-GE-EkaNeural', 'm': 'ka-GE-GiorgiNeural'}
 CONCURRENCY = 10
 
