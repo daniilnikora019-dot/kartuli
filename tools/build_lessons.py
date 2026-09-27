@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from translit_ka import translit                          # noqa: E402
 
 # порядок тем в приложении: сверху вниз, как в утверждённом плане раздела
-TOPICS = ['sounds', 'nouns', 'postpositions', 'verb']
+TOPICS = ['sounds', 'nouns', 'postpositions', 'pronouns', 'verb']
 
 KA = re.compile('[Ⴀ-ჿ]')
 errors = []

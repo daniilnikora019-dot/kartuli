@@ -34,6 +34,7 @@ const L = {
     'data/grammar/sounds.json',
     'data/grammar/nouns.json',
     'data/grammar/postpositions.json',
+    'data/grammar/pronouns.json',
     'data/grammar/verb.json',
   ],
 
