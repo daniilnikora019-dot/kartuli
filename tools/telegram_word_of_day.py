@@ -10,7 +10,7 @@
 """
 import json, os, random, sys, urllib.request, urllib.parse, datetime, mimetypes
 
-BASE = os.path.expanduser('~/Library/Application Support/kartuli')
+BASE = os.path.expanduser('~/Developer/apps/kartuli')
 CFG = f'{BASE}/telegram_config.json'
 HIST = f'{BASE}/data/wod_history.json'
 QUIZ_HIST = f'{BASE}/data/quiz_history.json'
