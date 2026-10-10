@@ -56,6 +56,24 @@ def good(ka, ru):
     return ka.endswith(('.', '!', '?', '։'))
 
 
+def _words(t):
+    return re.sub(r'[^\w ]', '', t.lower()).split()
+
+
+def dedupe(lst):
+    """Убирает повторы внутри слова: тот же перевод или те же слова в другом
+    порядке. В Tatoeba одно русское предложение часто связано с несколькими
+    грузинскими, различающимися только порядком слов, — в карточке это
+    выглядело как два одинаковых примера подряд."""
+    seen_ru, seen_ka, out = set(), set(), []
+    for ka, ru in lst:
+        r, k = ' '.join(_words(ru)), tuple(sorted(_words(ka)))
+        if r in seen_ru or k in seen_ka:
+            continue
+        seen_ru.add(r); seen_ka.add(k); out.append([ka, ru])
+    return out
+
+
 def main():
     words = json.load(open(f'{BASE}/data/words.json', encoding='utf-8'))['words']
     train = [w for w in words if w['q']]
@@ -85,17 +103,13 @@ def main():
         got = idx.get(w['id'], [])
         # короткие примеры понятнее, и слово в них заметнее
         got.sort(key=lambda p: len(p[0]))
-        seen, picked = set(), []
-        for ka, ru in got:
-            if ka in seen: continue
-            seen.add(ka); picked.append([ka, ru])
-            if len(picked) == MAX_PER_WORD: break
+        picked = dedupe(got)[:MAX_PER_WORD]
         if picked: out[w['id']] = picked
 
     if os.path.exists(MANUAL):          # ручной слой перекрывает собранный
         man = json.load(open(MANUAL, encoding='utf-8'))
         for wid, lst in man.items():
-            out[wid] = [p for p in lst][:MAX_PER_WORD]
+            out[wid] = dedupe(lst)[:MAX_PER_WORD]
         print(f'ручных записей: {len(man)}')
 
     json.dump(out, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))

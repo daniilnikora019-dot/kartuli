@@ -98,6 +98,17 @@ else:
 
 # в общий код не должно просачиваться название конкретного языка
 # уроки грамматики: файл необязателен, но если он есть — должен быть целым
+# примеры употребления: у одного слова не должно быть двух одинаковых
+# (тот же перевод или те же слова в другом порядке) — см. dedupe в build_examples.py
+_ex_path = f'{ROOT}/data/examples.json'
+if os.path.exists(_ex_path):
+    _norm = lambda t: re.sub(r'[^\w ]', '', t.lower()).split()
+    for _wid, _lst in json.load(open(_ex_path, encoding='utf-8')).items():
+        _ru = [' '.join(_norm(r)) for _k, r in _lst]
+        _ka = [tuple(sorted(_norm(k))) for k, _r in _lst]
+        if len(set(_ru)) < len(_ru) or len(set(_ka)) < len(_ka):
+            errors.append(f'{_wid}: повторяющиеся примеры употребления')
+
 for les_path in sorted(glob.glob(f'{ROOT}/data/grammar/*.json')):
     les = json.load(open(les_path, encoding='utf-8'))
     for l in les['lessons']:
