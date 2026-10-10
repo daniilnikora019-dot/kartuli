@@ -50,41 +50,41 @@ function summary(data: any, day: string) {
   const started = days[day]?.started || 0;
   let d = active(days[day]) ? day : shift(day, -1), streak = 0;
   while (active(days[d])) { streak++; d = shift(d, -1); }
-  const now = Date.now();
-  const due = Object.values<any>(data?.w || {}).filter(p => p.s === 'learning' && p.d <= now).length;
-  return { norm, started, left: Math.max(0, norm - started), streak, due, best: +data?.best || 0 };
+  return { norm, started, left: Math.max(0, norm - started), streak, best: +data?.best || 0 };
 }
 
-// Текст напоминания. Варианты чередуются по дню, чтобы не приедаться.
-function message(s: ReturnType<typeof summary>, day: string) {
-  const seed = Math.floor(Date.parse(day + 'T00:00:00Z') / 864e5);
+// Текст напоминания. На экране блокировки iPhone в строке ~28 знаков, а
+// заголовок делит строку с «сейчас» — поэтому заголовок до 18 знаков, текст
+// в две строки, одна мысль. Варианты чередуются по дню (пробное — случайно).
+function message(s: ReturnType<typeof summary>, day: string, random = false) {
+  const seed = random ? Math.floor(Math.random() * 1e6) : Math.floor(Date.parse(day + 'T00:00:00Z') / 864e5);
   const pick = <T>(xs: T[]) => xs[seed % xs.length];
   const words = plural(s.left, 'новое слово', 'новых слова', 'новых слов');
+  const Words = words[0].toUpperCase() + words.slice(1);
   const wait = s.left % 10 === 1 && s.left % 100 !== 11 ? 'ждёт' : 'ждут';
-  const tail = s.due ? ` И ${plural(s.due, 'слово ждёт', 'слова ждут', 'слов ждут')} повторения.` : '';
 
   if (s.started > 0) {
     return pick([
-      { title: `Почти! Осталось ${s.left} из ${s.norm}`, body: `Начало положено — добери норму, пока слова свежие в голове.${tail}` },
-      { title: `Ещё ${words} до нормы`, body: `Самое трудное — начать — уже позади. Пара минут, и день закрыт.${tail}` },
+      { title: `Осталось ${s.left} из ${s.norm}`, body: 'Начало есть — добери норму, пока слова свежие.' },
+      { title: `Ещё ${words}`, body: 'Пара минут — и норма на сегодня закрыта.' },
     ]);
   }
   if (s.streak >= 2) {
     const days = plural(s.streak, 'день', 'дня', 'дней');
     return pick([
-      { title: `🔥 ${days} подряд — не дай серии прерваться`, body: `Сегодня занятий ещё не было. ${words} — и серия продолжится.${tail}` },
-      { title: `Серия: ${days}. Сегодня — ${s.streak + 1}-й?`, body: `${words} ${wait}. Это минут пять, а привычка дороже любой порции.${tail}` },
+      { title: `🔥 ${days} подряд`, body: `Не прерывай серию: ${words}, минут пять.` },
+      { title: `🔥 Серия: ${days}`, body: `Сегодня — ${words}, и будет ${s.streak + 1}-й.` },
       ...(s.best > s.streak ? [{ title: `До рекорда ${plural(s.best - s.streak, 'день', 'дня', 'дней')}`,
-        body: `Рекорд — ${plural(s.best, 'день', 'дня', 'дней')} подряд. Сегодняшние ${words} приближают его.${tail}` }] : []),
+        body: `Рекорд — ${plural(s.best, 'день', 'дня', 'дней')}. Сегодня — ещё шаг к нему.` }] : []),
     ]);
   }
   return pick([
-    { title: 'გამარჯობა! 👋', body: `Новая порция готова: ${words}. Открой одну карточку — дальше пойдёт само.${tail}` },
-    { title: `${words} на сегодня`, body: `Пять минут в день — и через месяц это ${s.norm * 30} слов в копилке.${tail}` },
-    { title: 'Минутка грузинского?', body: `Сегодняшние ${words} ещё не взяты. Язык складывается из таких маленьких дней.${tail}` },
+    { title: 'გამარჯობა! 👋', body: `Порция готова: ${words}. Начни с одной карточки.` },
+    { title: `${plural(s.left, 'слово', 'слова', 'слов')} на сегодня`, body: `${Words} — пять минут. За месяц это ${s.norm * 30}.` },
+    { title: 'Есть пять минут?', body: `Язык складывается из коротких дней. ${Words} ${wait}.` },
     s.streak === 1
-      ? { title: 'Вчера было здорово 👏', body: `Сделай сегодня — и это уже серия из двух дней. ${words} ${wait}.${tail}` }
-      : { title: 'Слова сами себя не выучат 🙂', body: `${words} ${wait}. Новая серия начинается с сегодняшнего дня.${tail}` },
+      ? { title: 'Вчера — отлично 👏', body: 'Позанимайся сегодня — и это уже серия.' }
+      : { title: 'Новая серия? 🙂', body: `Начни сегодня: ${words}, минут пять.` },
   ]);
 }
 
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     const day = localNow(sub.tz).day;
     const s = summary(await progressOf(sub), day);
     if (!s.left) { s.left = s.norm; s.started = 0; }   // норма уже взята — покажем обычное напоминание
-    return json({ result: await send(sub, message(s, day)) });
+    return json({ result: await send(sub, message(s, day, true)) });
   }
 
   // по расписанию
