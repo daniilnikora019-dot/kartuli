@@ -16,7 +16,7 @@ create table public.push_subs (
   p256dh text not null,
   auth text not null,
   enabled boolean not null default true,
-  remind_at time not null default '19:00',
+  saver_day date,
   tz text not null default 'Asia/Tbilisi',
   last_day date,
   last_sent_at timestamptz,

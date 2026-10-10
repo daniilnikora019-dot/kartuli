@@ -28,10 +28,9 @@ const L = {
   translitNote: 'Латинская запись под грузинским словом',
 
   // Напоминания push-уведомлением, если дневная норма не взята. Шлёт функция
-  // Supabase fn по расписанию; кому можно — решает сервер (private.push_allowed).
+  // Supabase kartuli-push по расписанию; кому можно — решает сервер (private.push_allowed).
   // vapid — открытая половина ключа рассылки. null — раздела в настройках нет.
   notify: {
-    fn: 'kartuli-push',
     vapid: 'BPNaAc6YKO2zwHC51BUWPLQf2_E5GjuVxeF5_mD1-rKttjZdDpYHW4Tavg_eIjC-BnVwLTeg26jGIfbPrVI7R00',
   },
 

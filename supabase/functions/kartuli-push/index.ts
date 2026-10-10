@@ -1,18 +1,22 @@
 // Напоминания тренажёра: push на телефон, если дневная норма новых слов
 // ещё не взята. Вызывается двумя способами:
 //   * расписанием pg_cron каждые 10 минут — с заголовком x-cron-secret;
-//   * из приложения кнопкой «Прислать пробное» — с пропуском пользователя.
+//   * с пропуском пользователя — пробное себе (для проверки, в приложении кнопки нет).
+// Время пользователь не выбирает, как в Duolingo и похожих приложениях:
+//   19:00 — основное, если норма не взята;
+//   21:30 — «спасти серию», только если вчера занятия были, а сегодня ещё нет.
+// Не больше двух в день, после 23:00 — ничего.
 // Ключи VAPID, секрет расписания и список тех, кому напоминания разрешены,
 // лежат в закрытой схеме private и читаются только служебным ключом.
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-const WINDOW_MIN = 180;          // опоздавшее напоминание (сервер, сеть) позже трёх часов не шлём
+const MAIN = 19 * 60, SAVER = 21 * 60 + 30, LATE = 23 * 60;   // минуты от полуночи, местное время
 
 type Sub = {
   user_id: string; app: string; endpoint: string; p256dh: string; auth: string;
-  enabled: boolean; remind_at: string; tz: string; last_day: string | null;
+  enabled: boolean; tz: string; last_day: string | null; saver_day: string | null;
 };
 type Day = { ans?: number; rev?: number; drilled?: number; new?: number; started?: number };
 
@@ -50,7 +54,7 @@ function summary(data: any, day: string) {
   const started = days[day]?.started || 0;
   let d = active(days[day]) ? day : shift(day, -1), streak = 0;
   while (active(days[d])) { streak++; d = shift(d, -1); }
-  return { norm, started, left: Math.max(0, norm - started), streak, best: +data?.best || 0 };
+  return { norm, started, left: Math.max(0, norm - started), streak, best: +data?.best || 0, today: active(days[day]) };
 }
 
 // Текст напоминания. На экране блокировки iPhone в строке ~28 знаков, а
@@ -86,6 +90,18 @@ function message(s: ReturnType<typeof summary>, day: string, random = false) {
       ? { title: 'Вчера — отлично 👏', body: 'Позанимайся сегодня — и это уже серия.' }
       : { title: 'Новая серия? 🙂', body: `Начни сегодня: ${words}, минут пять.` },
   ]);
+}
+
+// Вечернее «спасти серию»: серия жива со вчера, сегодня занятий не было.
+function saverMessage(s: ReturnType<typeof summary>, day: string) {
+  const seed = Math.floor(Date.parse(day + 'T00:00:00Z') / 864e5);
+  const days = plural(s.streak, 'день', 'дня', 'дней');
+  const words = plural(s.left || s.norm, 'новое слово', 'новых слова', 'новых слов');
+  const xs = [
+    { title: '🔥 Спаси серию', body: `${days} подряд — не дай им сгореть. Минут пять.` },
+    { title: 'Серия под угрозой', body: `До полуночи — ${words}, и серия цела.` },
+  ];
+  return xs[seed % xs.length];
 }
 
 async function send(sub: Sub, msg: { title: string; body: string }) {
@@ -141,17 +157,20 @@ Deno.serve(async (req) => {
   for (const sub of (subs || []) as Sub[]) {
     if (!allowed.has(`${sub.user_id}/${sub.app}`)) continue;
     const now = localNow(sub.tz);
-    const [h, m] = sub.remind_at.split(':').map(Number);
-    const at = h * 60 + m;
-    if (sub.last_day === now.day || now.min < at || now.min >= at + WINDOW_MIN) continue;
+    const main = now.min >= MAIN && now.min < SAVER && sub.last_day !== now.day;
+    const saver = now.min >= SAVER && now.min < LATE && sub.saver_day !== now.day;
+    if (!main && !saver) continue;
     const s = summary(await progressOf(sub), now.day);
-    const res = s.left ? await send(sub, message(s, now.day)) : 'норма выполнена';
+    const mark = main ? 'last_day' : 'saver_day';
+    // основное — если норма не взята; вечернее — только если сегодня не занимались, а серия есть
+    const need = main ? s.left > 0 : !s.today && s.streak > 0;
+    const res = !need ? 'не нужно' : await send(sub, main ? message(s, now.day) : saverMessage(s, now.day));
     // ошибку доставки не отмечаем: следующий запуск попробует ещё раз
-    if (res === 'sent' || !s.left) {
-      await db.from('push_subs').update({ last_day: now.day, ...(res === 'sent' ? { last_sent_at: new Date().toISOString() } : {}) })
+    if (res === 'sent' || !need) {
+      await db.from('push_subs').update({ [mark]: now.day, ...(res === 'sent' ? { last_sent_at: new Date().toISOString() } : {}) })
         .eq('user_id', sub.user_id).eq('app', sub.app);
     }
-    out[sub.user_id.slice(0, 8)] = res;
+    out[`${sub.user_id.slice(0, 8)} ${mark}`] = res;
   }
   return json(out);
 });
