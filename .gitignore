@@ -11,3 +11,4 @@ README.md
 __pycache__/
 *.pyc
 *.log
+sources/

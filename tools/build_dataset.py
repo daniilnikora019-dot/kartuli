@@ -3,14 +3,18 @@
 import json, re, glob, os, collections, hashlib
 
 BASE = os.path.expanduser('~/Developer/apps/kartuli')
-WIKT = '/tmp/ka_ru_wikt.jsonl'
-FREQ_FILES = ['/tmp/kat_wikipedia_2021_100K/kat_wikipedia_2021_100K-words.txt',
-              '/tmp/kat-ge_web_2019_1M/kat-ge_web_2019_1M-words.txt']
+# Исходники (выгрузки Викисловаря, частотные списки Leipzig) — в sources/
+# рядом с проектом, не в /tmp: macOS чистит /tmp от файлов старше 3 дней,
+# и пересборка словаря молча становилась невозможной (11.10.2026).
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'sources') + '/'
+WIKT = SRC + 'ka_ru_wikt.jsonl'
+FREQ_FILES = [SRC + 'kat_wikipedia_2021_100K/kat_wikipedia_2021_100K-words.txt',
+              SRC + 'kat-ge_web_2019_1M/kat-ge_web_2019_1M-words.txt']
 
 from translit_ka import TRANSLIT, translit          # таблица вынесена, чтобы её могли брать и другие инструменты
 
 # ---------- внешние источники подтверждения написания ----------
-EN_WIKT = '/tmp/ka_en_wikt.jsonl'
+EN_WIKT = SRC + 'ka_en_wikt.jsonl'
 attested = set()
 personal_names = set()          # личные имена и фамилии учебному словарю не нужны
 for _line in open(EN_WIKT, encoding='utf-8'):
@@ -21,8 +25,8 @@ for _line in open(EN_WIKT, encoding='utf-8'):
     _gl = ' '.join(g for s_ in _r.get('senses', []) for g in (s_.get('glosses') or [])).lower()
     if 'given name' in _gl or 'surname' in _gl or 'a male name' in _gl or 'a female name' in _gl:
         personal_names.add(_w)
-for _p in ['/tmp/kat-ge_web_2019_1M/kat-ge_web_2019_1M-words.txt',
-           '/tmp/kat_wikipedia_2021_100K/kat_wikipedia_2021_100K-words.txt']:
+for _p in [SRC + 'kat-ge_web_2019_1M/kat-ge_web_2019_1M-words.txt',
+           SRC + 'kat_wikipedia_2021_100K/kat_wikipedia_2021_100K-words.txt']:
     for _line in open(_p, encoding='utf-8'):
         _q = _line.rstrip('\n').split('\t')
         if len(_q) >= 3: attested.add(_q[1])
