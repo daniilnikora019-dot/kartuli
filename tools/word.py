@@ -16,6 +16,8 @@
   $W $T del რაში                     выбросить из словаря совсем (с примерами и озвучкой)
   $W $T ex-drop რაში 1 3             снять примеры №1 и №3 (или all); пересборка их не вернёт
   $W $T ex-add სიახლე "…" "…"        свой пример (грузинский, русский) + озвучка
+  $W $T ex-ru სიახლე 2 "…"           поправить русский перевод примера №2 (озвучка не нужна)
+  $W $T ok სიახლე "сверено"           отметить слово проверенным (сверка с Google)
   $W $T tts                          озвучить новое, удалить ненужное
   $W $T check                        проверки данных
   $W $T test                         проверки + быстрые пользовательские сценарии
@@ -28,12 +30,17 @@
   data/overrides.json        перевод/уровень/тема/q — применяется build_dataset.py
   data/examples-manual.json  свои примеры — перекрывают собранные
   data/examples-block.json   снятые примеры — build_examples.py их пропускает
+  data/examples-fix.json     исправленные русские переводы примеров
+  data/verify-log.json       что уже сверено (tools/verify_daily.py берёт остальное);
+                             любая правка через word.py тоже отмечает слово
 words.json и examples.json правятся сразу, пересборка не нужна.
 """
 import json, os, re, subprocess, sys, time, urllib.request
 
-APPS = os.path.expanduser('~/Developer/apps')
-VENV_PY = f'{APPS}/.venv/bin/python'
+# папка с тренажёрами — та, где лежит этот репозиторий (на Mac ~/Developer/apps,
+# в облачной задаче — куда склонировали); venv — если есть, иначе текущий python
+APPS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+VENV_PY = f'{APPS}/.venv/bin/python' if os.path.exists(f'{APPS}/.venv/bin/python') else sys.executable
 SITE = 'https://daniilnikora019-dot.github.io'
 REPO = 'daniilnikora019-dot'
 PORTS = {'kartuli': 8777, 'romana': 8778, 'hayeren': 8779}
@@ -148,6 +155,13 @@ def _recount():
         WORDS['meta']['wikt'] = WORDS['meta'].get('wikt', 0) + d
 
 
+def mark(w, verdict, note=''):
+    """слово просмотрено — ежедневная сверка его больше не предложит"""
+    log = jload('data/verify-log.json', {})
+    log[w['ka']] = {'d': time.strftime('%Y-%m-%d'), 'v': verdict, **({'note': note} if note else {})}
+    jsave('data/verify-log.json', log, compact=False)
+
+
 def run(cmd, **kw):
     print('$', cmd if isinstance(cmd, str) else ' '.join(cmd), flush=True)
     return subprocess.run(cmd, cwd=BASE, shell=isinstance(cmd, str), **kw)
@@ -156,6 +170,8 @@ def run(cmd, **kw):
 def tts():
     if not os.path.exists(f'{BASE}/tools/tts_generate.py'):
         print('у этого тренажёра озвучка собирается иначе — пропускаю'); return
+    if subprocess.run([VENV_PY, '-c', 'import edge_tts'], capture_output=True).returncode != 0:
+        print('нет edge-tts: pip install edge-tts — без него новые примеры останутся без озвучки'); return
     old = set((jload('data/audio_index.json', {}) or {}).values())
     env = dict(os.environ, TTS_CONCURRENCY='3')
     for v in ('f', 'm'):
@@ -231,6 +247,9 @@ def ship(msg):
     run(['git', 'commit', '-q', '-m', msg])
     if run(['git', 'push', '-q', 'origin', 'main']).returncode != 0:
         sys.exit('не удалось отправить')
+    import shutil
+    if not shutil.which('gh'):
+        print(f'отправлено; публикация займёт пару минут: {SITE}/{app}/'); return
     time.sleep(6)
     rid = subprocess.run(['gh', 'run', 'list', '-R', f'{REPO}/{app}', '-L', '1', '--json', 'databaseId',
                           '-q', '.[0].databaseId'], capture_output=True, text=True).stdout.strip()
@@ -246,13 +265,14 @@ def main():
         print(__doc__); return
     cmd, rest = args[0], args[1:]
     if cmd == 'ru':
-        w = one(rest[0]); set_override(w, ru=rest[1]); show(w, False)
+        w = one(rest[0]); old = w['ru']; set_override(w, ru=rest[1]); mark(w, 'ru', f'было: {old}'); show(w, False)
     elif cmd == 'lvl':
         lv = rest[1].upper()
         if lv not in LEVELS: sys.exit(f'уровень: {LEVELS}')
-        w = one(rest[0]); set_override(w, lvl=lv); show(w, False)
+        w = one(rest[0]); set_override(w, lvl=lv); mark(w, 'lvl', lv); show(w, False)
     elif cmd in ('off', 'on'):
-        w = one(rest[0]); set_override(w, q=0 if cmd == 'off' else 1); _recount(); jsave(WORDS_P, WORDS); show(w, False)
+        w = one(rest[0]); set_override(w, q=0 if cmd == 'off' else 1); _recount(); jsave(WORDS_P, WORDS)
+        mark(w, cmd); show(w, False)
     elif cmd == 'del':
         w = one(rest[0])
         ovr = jload('data/overrides.json', {})
@@ -270,7 +290,7 @@ def main():
             with open(f"{BASE}/{_path('mnemonics', 'data/mnemonics.json')}", 'w', encoding='utf-8') as f:
                 f.write('{\n' + ',\n'.join(f'{json.dumps(k, ensure_ascii=False)}: {json.dumps(v, ensure_ascii=False)}'
                                             for k, v in MN.items()) + '\n}')
-        print(f"выброшено: {w['ka']} — {w['ru']}"); tts()
+        mark(w, 'del', w['ru']); print(f"выброшено: {w['ka']} — {w['ru']}"); tts()
     elif cmd == 'ex-drop':
         w = one(rest[0]); lst = EX.get(w['id'], [])
         nums = range(1, len(lst) + 1) if rest[1:] == ['all'] else [int(x) for x in rest[1:]]
@@ -287,7 +307,7 @@ def main():
         if keep: EX[w['id']] = keep
         else: EX.pop(w['id'], None)
         jsave('data/examples.json', EX)
-        print(f'снято примеров: {len(drop)}'); show(w)
+        mark(w, 'ex-drop', ' | '.join(drop)); print(f'снято примеров: {len(drop)}'); show(w)
         print('озвучку лишнего удалит: tools/word.py tts')
     elif cmd == 'ex-add':
         w = one(rest[0]); ka, ru = rest[1].strip(), rest[2].strip()
@@ -298,7 +318,23 @@ def main():
         jsave('data/examples-manual.json', man, compact=False)
         EX[w['id']] = man[w['id']]
         jsave('data/examples.json', EX)
-        show(w); tts()
+        mark(w, 'ex-add', ka); show(w); tts()
+    elif cmd == 'ex-ru':
+        w = one(rest[0]); n = int(rest[1]); new_ru = rest[2].strip()
+        lst = EX.get(w['id'], [])
+        ka, old_ru = lst[n - 1]
+        lst[n - 1] = [ka, new_ru]
+        jsave(_path('examples', 'data/examples.json'), EX)
+        fix = jload('data/examples-fix.json', {})        # пересборка возьмёт исправленный перевод
+        fix[ka] = new_ru
+        jsave('data/examples-fix.json', fix, compact=False)
+        man = jload('data/examples-manual.json', {})
+        if w['id'] in man:
+            man[w['id']] = [[k, new_ru if k == ka else r_] for k, r_ in man[w['id']]]
+            jsave('data/examples-manual.json', man, compact=False)
+        mark(w, 'ex-ru', f'{old_ru} → {new_ru}'); show(w)
+    elif cmd == 'ok':
+        w = one(rest[0]); mark(w, 'ok', ' '.join(rest[1:])); print(f"отмечено проверенным: {w['ka']}")
     elif cmd == 'tts':
         tts()
     elif cmd == 'check':

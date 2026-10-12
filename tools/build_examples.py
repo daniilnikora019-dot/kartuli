@@ -86,6 +86,10 @@ def main():
     words = json.load(open(f'{BASE}/data/words.json', encoding='utf-8'))['words']
     train = [w for w in words if w['q']]
     pairs = [localize(k, r) for k, r in tatoeba_pairs() + wiktionary_pairs() if good(k, r)]
+    # русские переводы примеров, исправленные вручную (tools/word.py ex-ru)
+    FIX = f'{BASE}/data/examples-fix.json'
+    fix = json.load(open(FIX, encoding='utf-8')) if os.path.exists(FIX) else {}
+    pairs = [(k, fix.get(k, r)) for k, r in pairs]
     print(f'пригодных пар: {len(pairs)}')
 
     # Совпадение по подстроке даёт ложные примеры: короткое «და» (сестра)
