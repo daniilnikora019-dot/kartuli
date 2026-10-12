@@ -12,6 +12,7 @@ import json, os, re, sys, collections
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from localize_names import localize   # Том и Мэри → грузинские имена
+from example_check import plausible  # отсев совпадений по буквам: რაში «конь» ≠ რაშია «в чём»
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Исходники (выгрузки Викисловаря, частотные списки Leipzig) — в sources/
@@ -102,7 +103,7 @@ def main():
                 hit = base in ka.lower()
             else:
                 hit = base in toks or (len(base) >= 4 and any(t.startswith(base) for t in toks))
-            if hit:
+            if hit and plausible(w['ka'], w['ru'], ka, ru):
                 idx[w['id']].append((ka, ru))
 
     out = {}
