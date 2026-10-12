@@ -13,6 +13,7 @@
   $W $T lvl რაში C1                  уровень A1…C1
   $W $T off რაში                     убрать из тренировок (в словаре остаётся)
   $W $T on რაში                      вернуть в тренировки
+  $W $T del რაში                     выбросить из словаря совсем (с примерами и озвучкой)
   $W $T ex-drop რაში 1 3             снять примеры №1 и №3 (или all); пересборка их не вернёт
   $W $T ex-add სიახლე "…" "…"        свой пример (грузинский, русский) + озвучка
   $W $T tts                          озвучить новое, удалить ненужное
@@ -133,6 +134,20 @@ def set_override(w, **kv):
     jsave(WORDS_P, WORDS)
 
 
+def _recount():
+    """счётчики тем и общее число слов — как их считает build_dataset.py"""
+    import collections
+    ws = WORDS['words']
+    allc = collections.Counter(c for x in ws for c in x['cats'])
+    train = collections.Counter(c for x in ws if x['q'] for c in x['cats'])
+    for c in WORDS.get('categories', []):
+        c['count'], c['all'] = train.get(c['id'], 0), allc.get(c['id'], 0)
+    if 'meta' in WORDS:
+        d = len(ws) - WORDS['meta'].get('total', len(ws))
+        WORDS['meta']['total'] = len(ws)
+        WORDS['meta']['wikt'] = WORDS['meta'].get('wikt', 0) + d
+
+
 def run(cmd, **kw):
     print('$', cmd if isinstance(cmd, str) else ' '.join(cmd), flush=True)
     return subprocess.run(cmd, cwd=BASE, shell=isinstance(cmd, str), **kw)
@@ -237,7 +252,25 @@ def main():
         if lv not in LEVELS: sys.exit(f'уровень: {LEVELS}')
         w = one(rest[0]); set_override(w, lvl=lv); show(w, False)
     elif cmd in ('off', 'on'):
-        w = one(rest[0]); set_override(w, q=0 if cmd == 'off' else 1); show(w, False)
+        w = one(rest[0]); set_override(w, q=0 if cmd == 'off' else 1); _recount(); jsave(WORDS_P, WORDS); show(w, False)
+    elif cmd == 'del':
+        w = one(rest[0])
+        ovr = jload('data/overrides.json', {})
+        ovr[w['ka']] = {'drop': True, 'note': ' '.join(rest[1:]) or f"было: {w['ru']}"}
+        jsave('data/overrides.json', ovr, compact=False)
+        WORDS['words'] = [x for x in WORDS['words'] if x['id'] != w['id']]
+        _recount()
+        jsave(WORDS_P, WORDS)
+        if EX.pop(w['id'], None) is not None:
+            jsave(_path('examples', 'data/examples.json'), EX)
+        man = jload('data/examples-manual.json', {})
+        if man.pop(w['id'], None) is not None:
+            jsave('data/examples-manual.json', man, compact=False)
+        if MN.pop(w['ka'], None) is not None:          # формат файла — одна строка на слово
+            with open(f"{BASE}/{_path('mnemonics', 'data/mnemonics.json')}", 'w', encoding='utf-8') as f:
+                f.write('{\n' + ',\n'.join(f'{json.dumps(k, ensure_ascii=False)}: {json.dumps(v, ensure_ascii=False)}'
+                                            for k, v in MN.items()) + '\n}')
+        print(f"выброшено: {w['ka']} — {w['ru']}"); tts()
     elif cmd == 'ex-drop':
         w = one(rest[0]); lst = EX.get(w['id'], [])
         nums = range(1, len(lst) + 1) if rest[1:] == ['all'] else [int(x) for x in rest[1:]]
