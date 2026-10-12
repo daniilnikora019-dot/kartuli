@@ -106,6 +106,13 @@ def main():
             if hit and plausible(w['ka'], w['ru'], ka, ru):
                 idx[w['id']].append((ka, ru))
 
+    # предложения, вручную снятые со слова (tools/word.py ex-drop)
+    BLOCK = f'{BASE}/data/examples-block.json'
+    block = json.load(open(BLOCK, encoding='utf-8')) if os.path.exists(BLOCK) else {}
+    for w in train:
+        if w['ka'] in block:
+            idx[w['id']] = [p for p in idx.get(w['id'], []) if p[0] not in block[w['ka']]]
+
     out = {}
     for w in train:
         got = idx.get(w['id'], [])

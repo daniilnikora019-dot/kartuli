@@ -5,7 +5,7 @@ import edge_tts
 
 BASE = os.path.expanduser('~/Developer/apps/kartuli')
 VOICES = {'f': 'ka-GE-EkaNeural', 'm': 'ka-GE-GiorgiNeural'}
-CONCURRENCY = 10
+CONCURRENCY = int(os.environ.get('TTS_CONCURRENCY', 10))   # при 403 от сервиса — меньше
 
 def key(text):
     return hashlib.sha1(text.encode('utf-8')).hexdigest()[:16]
