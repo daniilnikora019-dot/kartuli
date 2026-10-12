@@ -82,8 +82,12 @@ def main():
     data = json.load(open(OUT, encoding='utf-8'))
     words = {w['id']: w['ka'].lower()
              for w in json.load(open(f'{BASE}/data/words.json', encoding='utf-8'))['words']}
+    # ручной слой написан сразу правильно: там მერი — «мэр», а ტომი — «том»
+    manual = f'{BASE}/data/examples-manual.json'
+    keep = set(json.load(open(manual, encoding='utf-8'))) if os.path.exists(manual) else set()
     changed = dropped = 0
     for wid in list(data):
+        if wid in keep: continue
         new = []
         for ka, ru in data[wid]:
             nka, nru = localize(ka, ru)
