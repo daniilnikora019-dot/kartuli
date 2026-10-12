@@ -10,6 +10,9 @@
 """
 import json, os, re, sys, collections
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from localize_names import localize   # Том и Мэри → грузинские имена
+
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Исходники (выгрузки Викисловаря, частотные списки Leipzig) — в sources/
 # рядом с проектом, не в /tmp: macOS чистит /tmp от файлов старше 3 дней,
@@ -81,7 +84,7 @@ def dedupe(lst):
 def main():
     words = json.load(open(f'{BASE}/data/words.json', encoding='utf-8'))['words']
     train = [w for w in words if w['q']]
-    pairs = [(k, r) for k, r in tatoeba_pairs() + wiktionary_pairs() if good(k, r)]
+    pairs = [localize(k, r) for k, r in tatoeba_pairs() + wiktionary_pairs() if good(k, r)]
     print(f'пригодных пар: {len(pairs)}')
 
     # Совпадение по подстроке даёт ложные примеры: короткое «და» (сестра)
